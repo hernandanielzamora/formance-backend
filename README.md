@@ -64,6 +64,19 @@ permisos establecidos desde un entorno confiable y verificados por el servidor.
 No habrá autoasignación de roles ni permisos basados en un campo enviado por el cliente.
 La aplicación no puede asignar roles desde formularios ni mediante una ruta pública.
 
+### Habilitar una cuenta administradora
+
+Primero iniciar sesión en la aplicación y verificar el correo (Google lo verifica).
+Desde esta carpeta, con la cuenta de servicio local:
+
+```powershell
+npm.cmd run grant:admin -- correo@ejemplo.com
+```
+
+El script exige una cuenta existente, activa y verificada, y conserva otros custom claims.
+No crea cuentas, contraseñas ni asigna el rol por orden de registro. Después cerrar sesión
+y volver a entrar; la aplicación redirige al administrador a `/admin`.
+
 ## Estructura y verificación
 
 - `src/config`: variables y Firebase Admin.
