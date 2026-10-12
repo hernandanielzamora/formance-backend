@@ -5,6 +5,13 @@ Estado: validación de identidad y permisos; todavía no hay datos de negocio.
 `GET /api/auth/me` valida un ID token de Firebase y su revocación.
 `GET /api/admin/session` exige además correo verificado y custom claim `admin: true`.
 El registro y login se realizan con el SDK de Firebase del frontend, sin enviar contraseñas a la API.
+`GET /api/profile` consulta exclusivamente el perfil del usuario autenticado.
+`POST /api/profile/onboarding/preview` calcula la referencia sin guardar datos.
+`PUT /api/profile/onboarding` guarda perfil y peso inicial en una transacción,
+exige correo verificado y rechaza la repetición de un onboarding completo.
+La referencia adapta Harris-Benedict de Nutrivo y porcentajes fijos para resultados
+reproducibles; los objetivos son orientativos y editables al confirmar.
+Persistencia: `users/{uid}` y `users/{uid}/weightMeasurements/initial`.
 
 ## Inicio local
 

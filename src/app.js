@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { requireAuth, requireAdmin } from './middleware/auth.js';
+import { profileRoutes } from './routes/profile.js';
 
 export function createApp({ config }) {
   const app = express();
@@ -24,6 +25,7 @@ export function createApp({ config }) {
     res.set('Cache-Control', 'no-store');
     res.json({ authorized: true });
   });
+  app.use('/api/profile', profileRoutes);
   app.use((_req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Recurso no encontrado.' } }));
   app.use((error, _req, res, _next) => {
     const status = error.status === 400 ? 400 : error.status === 413 ? 413 : 500;
