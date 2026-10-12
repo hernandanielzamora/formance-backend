@@ -6,7 +6,13 @@ export function requireAuth(req, res, next) {
   firebase.auth.verifyIdToken(match[1], true).then((identity) => {
     req.identity = identity;
     next();
-  }).catch(() => res.status(401).json({ error: { code: 'INVALID_SESSION', message: 'Tu sesión venció. Volvé a iniciar sesión.' } }));
+  }).catch((error) => {
+    // No registrar el token ni el contenido de la credencial.
+    console.error('Firebase token verification failed:', error.code || 'UNKNOWN_ERROR');
+    const invalidSession = ['auth/id-token-expired', 'auth/id-token-revoked', 'auth/invalid-id-token', 'auth/user-disabled', 'auth/user-not-found', 'auth/argument-error'].includes(error.code);
+    if (!invalidSession) return res.status(503).json({ error: { code: 'AUTH_UNAVAILABLE', message: 'No pudimos conectar con el servicio de autenticación. Intentá nuevamente.' } });
+    return res.status(401).json({ error: { code: 'INVALID_SESSION', message: 'Tu sesión venció. Volvé a iniciar sesión.' } });
+  });
 }
 
 export function requireAdmin(req, res, next) {

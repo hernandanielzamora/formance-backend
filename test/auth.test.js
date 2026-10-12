@@ -12,7 +12,8 @@ test('Identidad verificada, revocación y permisos admin controlados por el serv
   };
   app.locals.firebase = { auth: { async verifyIdToken(token, checkRevoked) {
     assert.equal(checkRevoked, true);
-    if (!identities[token]) throw new Error('invalid or revoked');
+    if (token === 'outage') throw { code: 'app/network-error' };
+    if (!identities[token]) throw { code: 'auth/id-token-revoked' };
     return identities[token];
   } } };
   const server = app.listen(0, '127.0.0.1');
@@ -22,6 +23,7 @@ test('Identidad verificada, revocación y permisos admin controlados por el serv
   try {
     assert.equal((await request('auth/me')).status, 401);
     assert.equal((await request('auth/me', 'revoked')).status, 401);
+    assert.equal((await request('auth/me', 'outage')).status, 503);
     assert.equal((await (await request('auth/me', 'user')).json()).role, 'user');
     assert.equal((await request('admin/session', 'user')).status, 403);
     assert.equal((await request('admin/session', 'unverified')).status, 403);
