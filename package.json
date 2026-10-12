@@ -9,7 +9,8 @@
     "start": "node src/server.js",
     "test": "node --test",
     "check:firebase": "node scripts/check-firebase.js",
-    "grant:admin": "node scripts/grant-admin.js"
+    "grant:admin": "node scripts/grant-admin.js",
+    "migrate:training": "node scripts/migrate-training.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

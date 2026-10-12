@@ -2,9 +2,18 @@
 
 ## Biblioteca de entrenamiento
 
-Catálogo inicial de 18 ejercicios, 6 workouts y 4 rutinas base. Las sugerencias
+Catálogo inicial en Firestore de 18 ejercicios, 6 workouts y 4 rutinas base. Las sugerencias
 usan el objetivo del perfil sin bloquear otras opciones. Workouts propios,
-rutinas personalizadas y rutina activa se guardan bajo el UID autenticado.
+rutinas y ejercicios personalizados incluyen `ownerId` asignado por el servidor.
+Colecciones centrales: `exercises`, `workouts`, `routines`, con revisiones por entidad.
+Los usuarios gestionan sus propios elementos; los administradores pueden gestionar
+cualquier elemento. Contenido base compartido y contenido personal privado.
+La UI recibe `permissions.canEdit/canDelete`, pero la API verifica los permisos nuevamente.
+El borrado archiva, sin eliminar revisiones o referencias históricas.
+
+`npm.cmd run migrate:training` carga el catálogo y copia contenido legacy de usuarios.
+Es idempotente y conserva documentos existentes y originales. Los datos locales en
+`scripts/fixtures` son exclusivamente entrada de migración, no fuente de la API.
 Ver [modelo y contrato de logs](docs/training-and-logs.md) para endpoints,
 versionado y diseño de reportes semanales/mensuales.
 

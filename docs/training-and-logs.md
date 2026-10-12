@@ -3,16 +3,16 @@
 ## Biblioteca
 
 Ejercicio → entrada de workout → asignación a un día → rutina semanal.
-18 ejercicios, 6 workouts y 4 plantillas se precargan desde `src/data/training.js`.
-Catálogo versionado en código, sin copiar datos de Nutrivo ni necesitar un seed remoto.
+18 ejercicios, 6 workouts y 4 plantillas se cargaron en Firestore.
+La API lee exclusivamente las colecciones de Firebase; `scripts/fixtures/training.js`
+solo es entrada para la migración idempotente, nunca un catálogo de runtime.
 Las plantillas son ejemplos orientativos. Se ordenan por objetivo del perfil;
 ninguna se restringe. Frecuencia, distribución y disponibilidad explican su enfoque.
 
 Propiedad: el UID siempre procede del token verificado, nunca del formulario.
 
-- `users/{uid}/workouts/{id}`: workouts propios inicialmente inmutables.
-- `users/{uid}/routines/{id}`: última versión de una rutina propia.
-- `users/{uid}/routines/{id}/revisions/{version}`: revisiones inmutables.
+- `exercises/{id}`, `workouts/{id}`, `routines/{id}`: última versión con ownerId.
+- Cada entidad tiene `revisions/{version}` con copias históricas.
 - `users/{uid}/settings/training`: ID de rutina activa.
 
 Días `dayIndex: 0..6`, lunes-domingo. `workoutIds` ordenado, hasta tres por día.
@@ -33,8 +33,15 @@ Un cambio en biblioteca no modifica lo planificado en revisiones anteriores.
 - PUT `/api/training/routines/:id`: edición con control de versión.
 - PUT `/api/training/active-routine`: activar una rutina de la cuenta.
 
-Listas personales acotadas a 100 elementos. Paginación, CRUD admin del catálogo,
-edición de workouts y archivo de rutinas serán ampliaciones del esqueleto.
+GET consulta contenido público y propio; admin consulta todas las cuentas.
+POST crea ejercicios, workouts y rutinas con propietario tomado del token.
+PUT y DELETE exigen propietario o admin y expectedVersion; DELETE archiva.
+La UI recibe permissions.canEdit/canDelete; la autorización siempre se repite en API.
+El contenido creado por admin entra en la biblioteca compartida; el creado por usuario
+es privado. Ningún formulario puede transferir ownerId ni modificar visibilidad.
+Las reglas de Firestore deniegan acceso directo de clientes: todas las operaciones
+pasan por la API con Firebase Admin. La biblioteca requiere la migración inicial;
+no existe fallback al catálogo local. Paginación se añadirá al crecer el volumen.
 
 ## Sesiones realizadas: contrato propuesto, aún sin endpoints
 
