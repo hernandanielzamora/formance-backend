@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { requireAuth, requireAdmin } from './middleware/auth.js';
 
 export function createApp({ config }) {
   const app = express();
@@ -11,6 +12,17 @@ export function createApp({ config }) {
   app.get('/api/health', (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json({ service: 'formance-backend', status: 'ok' });
+  });
+  app.get('/api/auth/me', requireAuth, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const identity = req.identity;
+    res.json({ uid: identity.uid, email: identity.email || null, name: identity.name || null,
+      emailVerified: identity.email_verified === true,
+      role: identity.admin === true && identity.email_verified === true ? 'admin' : 'user' });
+  });
+  app.get('/api/admin/session', requireAuth, requireAdmin, (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ authorized: true });
   });
   app.use((_req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Recurso no encontrado.' } }));
   app.use((error, _req, res, _next) => {

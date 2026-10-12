@@ -1,7 +1,10 @@
 # Formance · Backend
 
 API independiente para el MVP del seminario. Node.js + Express + Firebase Admin.
-Estado: paso 1. No hay endpoints de autenticación ni datos de negocio todavía.
+Estado: validación de identidad y permisos; todavía no hay datos de negocio.
+`GET /api/auth/me` valida un ID token de Firebase y su revocación.
+`GET /api/admin/session` exige además correo verificado y custom claim `admin: true`.
+El registro y login se realizan con el SDK de Firebase del frontend, sin enviar contraseñas a la API.
 
 ## Inicio local
 
@@ -59,7 +62,7 @@ firebase deploy --only firestore --project TU_PROJECT_ID
 El paso 2 incluirá usuario y administrador desde el principio: acceso admin separado,
 permisos establecidos desde un entorno confiable y verificados por el servidor.
 No habrá autoasignación de roles ni permisos basados en un campo enviado por el cliente.
-Por ahora no existe ninguna cuenta ni ruta admin.
+La aplicación no puede asignar roles desde formularios ni mediante una ruta pública.
 
 ## Estructura y verificación
 
