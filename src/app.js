@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { requireAuth, requireAdmin } from './middleware/auth.js';
 import { profileRoutes } from './routes/profile.js';
+import { trainingRoutes } from './routes/training.js';
 
 export function createApp({ config }) {
   const app = express();
@@ -26,11 +27,12 @@ export function createApp({ config }) {
     res.json({ authorized: true });
   });
   app.use('/api/profile', profileRoutes);
+  app.use('/api/training', trainingRoutes);
   app.use((_req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Recurso no encontrado.' } }));
   app.use((error, _req, res, _next) => {
     const status = error.status === 400 ? 400 : error.status === 413 ? 413 : 500;
     if (status === 500) console.error('Error interno:', error.message);
-    res.status(status).json({ error: { code: status === 500 ? 'INTERNAL_ERROR' : 'INVALID_REQUEST', message: status === 500 ? 'Error interno del servidor.' : 'Solicitud inválida.' } });
+    res.status(status).json({ error: { code: status === 500 ? 'INTERNAL_ERROR' : 'INVALID_REQUEST', message: status === 500 ? 'Error interno del servidor.' : status === 400 && error.type !== 'entity.parse.failed' ? error.message : 'Solicitud inválida.' } });
   });
   return app;
 }

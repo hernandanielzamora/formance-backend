@@ -1,5 +1,13 @@
 # Formance · Backend
 
+## Biblioteca de entrenamiento
+
+Catálogo inicial de 18 ejercicios, 6 workouts y 4 rutinas base. Las sugerencias
+usan el objetivo del perfil sin bloquear otras opciones. Workouts propios,
+rutinas personalizadas y rutina activa se guardan bajo el UID autenticado.
+Ver [modelo y contrato de logs](docs/training-and-logs.md) para endpoints,
+versionado y diseño de reportes semanales/mensuales.
+
 API independiente para el MVP del seminario. Node.js + Express + Firebase Admin.
 Estado: validación de identidad y permisos; todavía no hay datos de negocio.
 `GET /api/auth/me` valida un ID token de Firebase y su revocación.
