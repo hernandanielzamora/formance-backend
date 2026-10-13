@@ -16,6 +16,10 @@ Es idempotente y conserva documentos existentes y originales. Los datos locales 
 `scripts/fixtures` son exclusivamente entrada de migración, no fuente de la API.
 Ver [modelo y contrato de logs](docs/training-and-logs.md) para endpoints,
 versionado y diseño de reportes semanales/mensuales.
+Calendario semanal y registro de series implementados: ver
+[API y persistencia de sesiones](docs/training-sessions.md). Los logs son privados
+por usuario, conservan snapshots y se guardan con control de versión. Los reportes
+agregados y la planificación semanal histórica siguen pendientes.
 
 API independiente para el MVP del seminario. Node.js + Express + Firebase Admin.
 Estado: validación de identidad y permisos; todavía no hay datos de negocio.

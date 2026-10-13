@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { requireAuth } from '../middleware/auth.js';
+import { sessionRoutes } from './training-sessions.js';
 import { validateExercise, validateWorkout, validateRoutine, validateVersion, isAdmin, canManage, canRead, present, invalid } from '../services/training.js';
 export const trainingRoutes = Router();
 trainingRoutes.use(requireAuth,(req,res,next)=>{
@@ -9,6 +10,7 @@ trainingRoutes.use(requireAuth,(req,res,next)=>{
   req.trainingUser=req.app.locals.firebase.db.collection('users').doc(req.identity.uid);
   next();
 });
+trainingRoutes.use(sessionRoutes);
 async function visible(req,kind){
   const collection=req.app.locals.firebase.db.collection(kind);
   const snapshots=isAdmin(req.identity)?[await collection.get()]:await Promise.all([collection.where('visibility','==','public').get(),collection.where('ownerId','==',req.identity.uid).get()]);

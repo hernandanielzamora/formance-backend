@@ -43,7 +43,10 @@ Las reglas de Firestore deniegan acceso directo de clientes: todas las operacion
 pasan por la API con Firebase Admin. La biblioteca requiere la migración inicial;
 no existe fallback al catálogo local. Paginación se añadirá al crecer el volumen.
 
-## Sesiones realizadas: contrato propuesto, aún sin endpoints
+## Sesiones realizadas
+
+El registro de series ya está implementado. Ver [API y comportamiento actuales](training-sessions.md).
+El contrato siguiente conserva las decisiones de snapshots y agregación para futuros reportes.
 
 Colección: `users/{uid}/trainingSessions/{sessionId}`. ID distinto por sesión,
 no por fecha: pueden existir varias sesiones el mismo día.
