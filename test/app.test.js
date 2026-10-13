@@ -20,6 +20,17 @@ test('API responde health, CORS, 404 y JSON inválido sin exponer detalles', asy
     assert.equal(health.headers.get('access-control-allow-origin'), config.frontendOrigin);
     assert.equal(health.headers.get('x-powered-by'), null);
     assert.deepEqual(await health.json(), { service: 'formance-backend', status: 'ok' });
+    const preflight = await fetch(`${base}/api/auth/me`, {
+      method: 'OPTIONS',
+      headers: { Origin: config.frontendOrigin, 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization' },
+    });
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get('access-control-allow-origin'), config.frontendOrigin);
+    assert.match(preflight.headers.get('access-control-allow-headers'), /Authorization/i);
+    const unavailable = await fetch(`${base}/api/auth/me`, { headers: { Origin: config.frontendOrigin, Authorization: 'Bearer test' } });
+    assert.equal(unavailable.status, 503);
+    assert.equal(unavailable.headers.get('access-control-allow-origin'), config.frontendOrigin);
+    assert.equal((await unavailable.json()).error.code, 'AUTH_UNAVAILABLE');
     const denied = await fetch(`${base}/api/health`, { headers: { Origin: 'https://untrusted.example' } });
     assert.notEqual(denied.headers.get('access-control-allow-origin'), 'https://untrusted.example');
     assert.equal((await fetch(`${base}/missing`)).status, 404);
