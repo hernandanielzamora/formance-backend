@@ -1,7 +1,45 @@
 # Formance · Backend
 
+## Alimentación
+
+Diario privado, carga manual, búsqueda USDA y estimación por foto con Gemini.
+Setup y claves: [registro de comida](docs/food-logging.md). Completar `USDA_API_KEY`
+y `GEMINI_API_KEY` solo en `.env`, reiniciar y ejecutar `npm.cmd run check:food`.
+La carga manual funciona sin claves; fotos y búsquedas muestran disponibilidad.
+
+## Biblioteca de entrenamiento
+
+Catálogo inicial en Firestore de 18 ejercicios, 6 workouts y 4 rutinas base. Las sugerencias
+usan el objetivo del perfil sin bloquear otras opciones. Workouts propios,
+rutinas y ejercicios personalizados incluyen `ownerId` asignado por el servidor.
+Colecciones centrales: `exercises`, `workouts`, `routines`, con revisiones por entidad.
+Los usuarios gestionan sus propios elementos; los administradores pueden gestionar
+cualquier elemento. Contenido base compartido y contenido personal privado.
+La UI recibe `permissions.canEdit/canDelete`, pero la API verifica los permisos nuevamente.
+El borrado archiva, sin eliminar revisiones o referencias históricas.
+
+`npm.cmd run migrate:training` carga el catálogo y copia contenido legacy de usuarios.
+Es idempotente y conserva documentos existentes y originales. Los datos locales en
+`scripts/fixtures` son exclusivamente entrada de migración, no fuente de la API.
+Ver [modelo y contrato de logs](docs/training-and-logs.md) para endpoints,
+versionado y diseño de reportes semanales/mensuales.
+Calendario semanal y registro de series implementados: ver
+[API y persistencia de sesiones](docs/training-sessions.md). Los logs son privados
+por usuario, conservan snapshots y se guardan con control de versión. Los reportes
+agregados y la planificación semanal histórica siguen pendientes.
+
 API independiente para el MVP del seminario. Node.js + Express + Firebase Admin.
-Estado: paso 1. No hay endpoints de autenticación ni datos de negocio todavía.
+Estado: validación de identidad y permisos; todavía no hay datos de negocio.
+`GET /api/auth/me` valida un ID token de Firebase y su revocación.
+`GET /api/admin/session` exige además correo verificado y custom claim `admin: true`.
+El registro y login se realizan con el SDK de Firebase del frontend, sin enviar contraseñas a la API.
+`GET /api/profile` consulta exclusivamente el perfil del usuario autenticado.
+`POST /api/profile/onboarding/preview` calcula la referencia sin guardar datos.
+`PUT /api/profile/onboarding` guarda perfil y peso inicial en una transacción,
+exige correo verificado y rechaza la repetición de un onboarding completo.
+La referencia adapta Harris-Benedict de Nutrivo y porcentajes fijos para resultados
+reproducibles; los objetivos son orientativos y editables al confirmar.
+Persistencia: `users/{uid}` y `users/{uid}/weightMeasurements/initial`.
 
 ## Inicio local
 
@@ -59,7 +97,20 @@ firebase deploy --only firestore --project TU_PROJECT_ID
 El paso 2 incluirá usuario y administrador desde el principio: acceso admin separado,
 permisos establecidos desde un entorno confiable y verificados por el servidor.
 No habrá autoasignación de roles ni permisos basados en un campo enviado por el cliente.
-Por ahora no existe ninguna cuenta ni ruta admin.
+La aplicación no puede asignar roles desde formularios ni mediante una ruta pública.
+
+### Habilitar una cuenta administradora
+
+Primero iniciar sesión en la aplicación y verificar el correo (Google lo verifica).
+Desde esta carpeta, con la cuenta de servicio local:
+
+```powershell
+npm.cmd run grant:admin -- correo@ejemplo.com
+```
+
+El script exige una cuenta existente, activa y verificada, y conserva otros custom claims.
+No crea cuentas, contraseñas ni asigna el rol por orden de registro. Después cerrar sesión
+y volver a entrar; la aplicación redirige al administrador a `/admin`.
 
 ## Estructura y verificación
 

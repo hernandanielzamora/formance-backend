@@ -18,5 +18,9 @@ export function parseEnv(source = process.env) {
   if (nodeEnv === 'production' && !firebaseProjectId) {
     throw new Error('FIREBASE_PROJECT_ID es obligatorio en producción.');
   }
-  return { port, nodeEnv, frontendOrigin, firebaseProjectId };
+  const limit = (key, fallback, max) => { const value = Number(source[key] || fallback); if (!Number.isInteger(value) || value < 1 || value > max) throw new Error(`${key} inválido.`); return value; };
+  const geminiModel = source.GEMINI_MODEL?.trim() || 'gemini-2.5-flash-lite';
+  if (!['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.8-flash'].includes(geminiModel)) throw new Error('GEMINI_MODEL debe ser un modelo de visión con nivel gratuito admitido.');
+  return { port, nodeEnv, frontendOrigin, firebaseProjectId, usdaApiKey: source.USDA_API_KEY?.trim() || '', geminiApiKey: source.GEMINI_API_KEY?.trim() || '', geminiModel,
+    foodAnalysisUserDailyLimit: limit('FOOD_AI_USER_DAILY_LIMIT', 3, 100), foodAnalysisGlobalDailyLimit: limit('FOOD_AI_GLOBAL_DAILY_LIMIT', 20, 1000), foodAnalysisGlobalMinuteLimit: limit('FOOD_AI_GLOBAL_MINUTE_LIMIT', 3, 30) };
 }

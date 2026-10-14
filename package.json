@@ -8,7 +8,10 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "node --test",
-    "check:firebase": "node scripts/check-firebase.js"
+    "check:firebase": "node scripts/check-firebase.js",
+    "check:food": "node scripts/check-food.js",
+    "grant:admin": "node scripts/grant-admin.js",
+    "migrate:training": "node scripts/migrate-training.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

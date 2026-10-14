@@ -1,0 +1,60 @@
+import { fixture } from '../test-support/firestore.js';
+﻿import test from 'node:test';
+import assert from 'node:assert/strict';
+import { exercises,workouts,routineTemplates } from '../scripts/fixtures/training.js';
+import { validateWorkout,validateRoutine,validateExercise,canManage } from '../src/services/training.js';
+import {createApp} from '../src/app.js';
+import {parseEnv} from '../src/config/env.js';
+
+test('Validaciones rechazan suplantación de propietario y referencias desconocidas',()=>{
+  assert.throws(()=>validateExercise({name:'X',muscle:'X',equipment:'X',instructions:'X',ownerId:'other'}));
+  assert.throws(()=>validateWorkout({name:'X',focus:'X',exercises:[{...workouts[0].exercises[0],exerciseId:'foreign'}]},exercises));
+  for(const workout of workouts) validateWorkout({name:workout.name,focus:workout.focus,exercises:workout.exercises},exercises);
+  for(const template of routineTemplates) validateRoutine({name:template.name,days:template.days,goals:template.goals},workouts,exercises);
+  assert.equal(canManage({uid:'user'},{ownerId:'admin'}),false);
+  assert.equal(canManage({uid:'admin',admin:true,email_verified:true},{ownerId:'user'}),true);
+});
+test('CRUD exige propietario o admin y conserva revisiones al archivar',async()=>{
+  const {db,store}=fixture();
+  const app=createApp({config:parseEnv({NODE_ENV:'test'})});
+  app.locals.firebase={db,auth:{async verifyIdToken(token){return{uid:token,email_verified:true,admin:token==='admin'};}}};
+  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+  const base=`http://127.0.0.1:${server.address().port}/api/training`;
+  const request=(path,method='GET',body,token='user')=>fetch(`${base}/${path}`,{method,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
+  try{
+    const userCatalog=await(await request('catalog')).json();
+    assert.equal(userCatalog.exercises[0].permissions.canEdit,false);
+    assert.equal(userCatalog.routineTemplates.length,4);
+    const adminCatalog=await(await request('catalog','GET',undefined,'admin')).json();
+    assert.equal(adminCatalog.exercises[0].permissions.canEdit,true);
+    assert.equal((await request('exercises/squat','DELETE',{expectedVersion:1})).status,403);
+    const exerciseBody={name:'Personal',muscle:'Core',equipment:'Peso corporal',instructions:'Controlar el movimiento.'};
+    const created=await request('exercises','POST',exerciseBody);assert.equal(created.status,201);
+    const e=(await created.json()).exercise;
+    assert.equal(e.ownerId,'user');assert.equal(e.visibility,'private');assert.equal(e.permissions.canEdit,true);
+    assert.ok(!(await(await request('catalog','GET',undefined,'other')).json()).exercises.some(x=>x.id===e.id));
+    assert.ok((await(await request('catalog','GET',undefined,'admin')).json()).exercises.some(x=>x.id===e.id));
+    assert.equal((await request(`exercises/${e.id}`,'PUT',{...exerciseBody,expectedVersion:1},'other')).status,404);
+    assert.equal((await request(`exercises/${e.id}`,'PUT',{...exerciseBody,expectedVersion:1,ownerId:'admin'})).status,400);
+    const changed=await request(`exercises/${e.id}`,'PUT',{...exerciseBody,name:'Admin edit',expectedVersion:1},'admin');assert.equal(changed.status,200);
+    assert.equal((await changed.json()).exercise.ownerId,'user');
+    assert.equal((await request(`exercises/${e.id}`,'PUT',{...exerciseBody,expectedVersion:1})).status,409);
+    const workout=await(await request('workouts','POST',{name:'Mi workout',focus:'Core',exercises:[{exerciseId:e.id,sets:3,repsMin:8,repsMax:12,restSeconds:90}]})).json();
+    assert.equal(workout.workout.exercises[0].exerciseSnapshot.name,'Admin edit');
+    assert.equal((await request(`workouts/${workout.workout.id}`,'DELETE',{expectedVersion:1},'other')).status,404);
+    const days=Array.from({length:7},(_,dayIndex)=>({dayIndex,workoutIds:dayIndex===0?[workout.workout.id]:[]}));
+    const routineResponse=await request('routines','POST',{name:'Mi rutina',days});assert.equal(routineResponse.status,201);
+    const routine=(await routineResponse.json()).routine;
+    assert.equal((await request('active-routine','PUT',{routineId:routine.id})).status,200);
+    assert.equal((await request(`routines/${routine.id}`,'PUT',{name:'Otra',days,expectedVersion:1},'other')).status,404);
+    assert.equal((await request(`routines/${routine.id}`,'PUT',{name:'Admin',days,expectedVersion:1},'admin')).status,200);
+    assert.equal(store.get(`routines/${routine.id}/revisions/1`).name,'Mi rutina');
+    assert.equal((await request(`exercises/${e.id}`,'DELETE',{expectedVersion:2})).status,200);
+    assert.equal(store.get(`exercises/${e.id}`).archived,true);
+    assert.equal(store.get(`routines/${routine.id}`).days[0].assignments[0].exercises[0].exerciseName,'Admin edit');
+    assert.equal((await request(`workouts/${workout.workout.id}`,'DELETE',{expectedVersion:1},'admin')).status,200);
+    assert.equal((await request(`routines/${routine.id}`,'DELETE',{expectedVersion:2})).status,200);
+    assert.equal((await(await request('routines')).json()).activeRoutineId,null);
+    assert.ok(store.has(`routines/${routine.id}/revisions/1`));
+  }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
+});
