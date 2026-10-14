@@ -1,5 +1,12 @@
 # Formance · Backend
 
+## Alimentación
+
+Diario privado, carga manual, búsqueda USDA y estimación por foto con Gemini.
+Setup y claves: [registro de comida](docs/food-logging.md). Completar `USDA_API_KEY`
+y `GEMINI_API_KEY` solo en `.env`, reiniciar y ejecutar `npm.cmd run check:food`.
+La carga manual funciona sin claves; fotos y búsquedas muestran disponibilidad.
+
 ## Biblioteca de entrenamiento
 
 Catálogo inicial en Firestore de 18 ejercicios, 6 workouts y 4 rutinas base. Las sugerencias
