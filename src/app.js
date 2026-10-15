@@ -6,6 +6,8 @@ import { profileRoutes } from './routes/profile.js';
 import { trainingRoutes } from './routes/training.js';
 import { foodRoutes } from './routes/food.js';
 import { createFoodProviders } from './services/food-providers.js';
+import { reportRoutes } from './routes/reports.js';
+import { weightRoutes } from './routes/weight.js';
 
 export function createApp({ config }) {
   const app = express();
@@ -34,6 +36,8 @@ export function createApp({ config }) {
   app.use('/api/profile', profileRoutes);
   app.use('/api/training', trainingRoutes);
   app.use('/api/food', foodRoutes);
+  app.use('/api/reports', reportRoutes);
+  app.use('/api/weight', weightRoutes);
   app.use((_req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Recurso no encontrado.' } }));
   app.use((error, _req, res, _next) => {
     const status = [400, 404, 409, 413, 429, 502, 503].includes(error.status) ? error.status : 500;

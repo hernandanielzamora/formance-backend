@@ -1,5 +1,12 @@
 # Formance · Backend
 
+## Reportes
+
+Reporte semanal e historial privados calculados desde los logs, sin consumir IA.
+Ver [cálculos y límites](docs/reports.md). Incluye comparación con el período
+anterior, evolución de peso y cobertura de datos. La adherencia histórica queda pendiente.
+Registro privado de peso con gráfico en el frontend: [contrato y cálculos](docs/weight.md).
+
 ## Alimentación
 
 Diario privado, carga manual, búsqueda USDA y estimación por foto con Gemini.
@@ -26,7 +33,7 @@ versionado y diseño de reportes semanales/mensuales.
 Calendario semanal y registro de series implementados: ver
 [API y persistencia de sesiones](docs/training-sessions.md). Los logs son privados
 por usuario, conservan snapshots y se guardan con control de versión. Los reportes
-agregados y la planificación semanal histórica siguen pendientes.
+agregados semanales están disponibles; la planificación semanal histórica queda pendiente.
 
 API independiente para el MVP del seminario. Node.js + Express + Firebase Admin.
 Estado: validación de identidad y permisos; todavía no hay datos de negocio.

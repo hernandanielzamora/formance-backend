@@ -1,7 +1,8 @@
+import { timeZone } from './training-sessions.js';
 export const activityFactors = { sedentary: 1.2, light: 1.375, moderate: 1.55, high: 1.725, intense: 1.9 };
 const goalFactors = { maintain: 1, muscle: 1.1, recomposition: .9, fat_loss: .85 };
 export function validateOnboarding(body, allowTargets = false) {
-  const allowed = ['name', 'age', 'sex', 'heightCm', 'initialWeightKg', 'activity', 'goal', ...(allowTargets ? ['targets'] : [])];
+  const allowed = ['name', 'age', 'sex', 'heightCm', 'initialWeightKg', 'activity', 'goal', 'timeZone', ...(allowTargets ? ['targets'] : [])];
   if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some((key) => !allowed.includes(key))) throw new Error('Datos de perfil inválidos.');
   if (typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 80) throw new Error('Ingresá un nombre de hasta 80 caracteres.');
   const ranges = { age: [18, 100], heightCm: [100, 230], initialWeightKg: [30, 250] };
@@ -16,7 +17,7 @@ export function validateOnboarding(body, allowTargets = false) {
       if (!Number.isInteger(value) || value < min || value > max) throw new Error('Revisá los objetivos nutricionales.');
     }
   }
-  return { ...body, name: body.name.trim() };
+  return { ...body, name: body.name.trim(), ...(body.timeZone !== undefined ? { timeZone: timeZone(body.timeZone) } : {}) };
 }
 
 // Adaptación determinista de los cálculos Harris-Benedict del onboarding de Nutrivo.
