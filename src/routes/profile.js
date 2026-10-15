@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { validateOnboarding, calculateTargets } from '../services/onboarding.js';
+import { dateAt } from '../services/weight.js';
 
 export const profileRoutes = Router();
 profileRoutes.use(requireAuth, (req, res, next) => {
@@ -31,7 +32,7 @@ profileRoutes.put('/onboarding', async (req, res) => {
     const existing = await transaction.get(userRef);
     if (existing.exists && existing.data().onboardingCompleted) return false;
     transaction.set(userRef, profile);
-    transaction.set(userRef.collection('weightMeasurements').doc('initial'), { weightKg: personal.initialWeightKg, recordedAt: now, source: 'onboarding' });
+    transaction.set(userRef.collection('weightMeasurements').doc('initial'), { weightKg: personal.initialWeightKg, recordedAt: now, source: 'onboarding', ...(personal.timeZone ? { localDate: dateAt(now, personal.timeZone), timeZone: personal.timeZone, dateInferred: false } : {}) });
     return true;
   });
   if (!saved) return res.status(409).json({ error: { code: 'ONBOARDING_COMPLETED', message: 'Tu perfil ya está configurado.' } });
