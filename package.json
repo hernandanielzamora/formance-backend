@@ -13,7 +13,8 @@
     "grant:admin": "node scripts/grant-admin.js",
     "migrate:training": "node scripts/migrate-training.js",
     "seed:training": "node scripts/seed-training-catalog.js",
-    "seed:study": "node scripts/seed-study-data.js"
+    "seed:study": "node scripts/seed-study-data.js",
+    "refine:study": "node scripts/refine-study-data.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
