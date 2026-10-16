@@ -11,7 +11,8 @@
     "check:firebase": "node scripts/check-firebase.js",
     "check:food": "node scripts/check-food.js",
     "grant:admin": "node scripts/grant-admin.js",
-    "migrate:training": "node scripts/migrate-training.js"
+    "migrate:training": "node scripts/migrate-training.js",
+    "seed:training": "node scripts/seed-training-catalog.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

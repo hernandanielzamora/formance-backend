@@ -3,7 +3,8 @@
 ## Biblioteca
 
 Ejercicio → entrada de workout → asignación a un día → rutina semanal.
-18 ejercicios, 6 workouts y 4 plantillas se cargaron en Firestore.
+42 ejercicios, 20 workouts y 12 plantillas, con al menos tres opciones por objetivo.
+Ver [carga aditiva del catálogo](training-catalog.md) para ampliar o verificar Firestore.
 La API lee exclusivamente las colecciones de Firebase; `scripts/fixtures/training.js`
 solo es entrada para la migración idempotente, nunca un catálogo de runtime.
 Las plantillas son ejemplos orientativos. Se ordenan por objetivo del perfil;
