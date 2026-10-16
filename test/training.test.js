@@ -24,7 +24,7 @@ test('CRUD exige propietario o admin y conserva revisiones al archivar',async()=
   try{
     const userCatalog=await(await request('catalog')).json();
     assert.equal(userCatalog.exercises[0].permissions.canEdit,false);
-    assert.equal(userCatalog.routineTemplates.length,4);
+    assert.equal(userCatalog.routineTemplates.length,routineTemplates.length);
     const adminCatalog=await(await request('catalog','GET',undefined,'admin')).json();
     assert.equal(adminCatalog.exercises[0].permissions.canEdit,true);
     assert.equal((await request('exercises/squat','DELETE',{expectedVersion:1})).status,403);
