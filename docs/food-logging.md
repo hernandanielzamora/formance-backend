@@ -13,7 +13,7 @@ Completar en **formance-backend/.env** (nunca en el frontend):
 ```dotenv
 USDA_API_KEY=
 GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_MODEL=gemini-3.5-flash-lite
 FOOD_AI_USER_DAILY_LIMIT=3
 FOOD_AI_GLOBAL_DAILY_LIMIT=20
 FOOD_AI_GLOBAL_MINUTE_LIMIT=3
@@ -26,9 +26,21 @@ FOOD_AI_GLOBAL_MINUTE_LIMIT=3
   clave. Una clave de un proyecto con facturación puede generar cargos incluso
   con este modelo. Verificar el nivel y los límites reales en AI Studio.
 - Reiniciar el backend después de modificar `.env`.
+- En Render, configurar `GEMINI_MODEL=gemini-3.5-flash-lite` y elegir **Save and deploy**.
+  Una variable explícita con el modelo anterior prevalece sobre el nuevo default.
 - Ejecutar `npm.cmd run check:food`: consulta USDA y verifica el acceso al modelo
   Gemini sin mandar imágenes ni generar contenido. Con claves vacías informa lo
   pendiente; no imprime claves. `npm.cmd run dev` arranca el backend.
+
+El chequeo de metadatos no genera contenido y no prueba que `generateContent` esté
+habilitado para ese modelo/proyecto. Se reprodujo un caso en que metadatos/listado de
+`gemini-2.5-flash-lite` devolvían 200, pero el análisis devolvía 404; con la misma clave
+y foto, `gemini-3.5-flash-lite` devolvió cuatro alimentos validados. Google limita el
+acceso de nuevos proyectos a modelos 2.5 y recomienda modelos actuales:
+https://ai.google.dev/gemini-api/docs/deprecations.
+3.5 Flash-Lite admite imágenes y tiene nivel gratuito; las cuotas disponibles dependen
+del proyecto. No se modifican facturación ni cupos de Formance:
+https://ai.google.dev/gemini-api/docs/pricing.
 
 No se requiere SDK adicional, Cloud Functions ni almacenamiento de fotografías.
 Las llamadas REST usan fetch de Node, con dominios fijos, claves en headers,
@@ -68,6 +80,20 @@ de llamar al proveedor y también cuentan los intentos fallidos, de modo conserv
 `requestId` + hash permite recuperar análisis exitosos sin repetir la llamada.
 Los cupos reales de Google se aplican además y no están garantizados por estos
 valores. No se cambia automáticamente a un modelo o plan pago.
+
+### Diagnóstico de fallos de análisis
+
+El JSON de `/api/food/analyze` distingue `GEMINI_MODEL_UNAVAILABLE` (404 del proveedor),
+`GEMINI_KEY_INVALID`, `GEMINI_KEY_BLOCKED`, `GEMINI_ACCESS_DENIED`,
+`GEMINI_REQUEST_REJECTED`, `GEMINI_TIMEOUT`, `GEMINI_NETWORK_ERROR` y
+`PROVIDER_LIMIT` (429). Un 503 HTTP de Formance no implica siempre saturación de Google.
+Los fallos temporales de Google conservan una descripción diferenciada.
+
+Los logs de Render muestran `Food analysis failed` con código, modelo, status HTTP
+del proveedor y, cuando existe, código de transporte reconocido. El documento privado
+`foodAnalyses/{id}` conserva `failureCode` y `upstreamStatus`. No se registran mensajes
+crudos de Google, claves, tokens ni imágenes. Se mantiene un solo intento upstream,
+sin repetir análisis o cambiar de modelo automáticamente ni relajar cuotas.
 
 Documentación:
 - https://ai.google.dev/gemini-api/docs/pricing
