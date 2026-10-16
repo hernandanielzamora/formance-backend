@@ -82,5 +82,12 @@ foodRoutes.post('/analyze', async (req, res) => {
     const result = await req.app.locals.foodProviders.analyze(input);
     await ref.set({ status: 'ready', imageHash: hash, model: config.geminiModel, result, createdAt: new Date().toISOString() });
     res.json({ analysisId: input.requestId, ...result });
-  } catch (error) { await ref.set({ status: 'failed', imageHash: hash, model: config.geminiModel, createdAt: new Date().toISOString() }); throw error; }
+  } catch (error) {
+    const failureCode = typeof error.code === 'string' && /^[A-Z_]{1,80}$/.test(error.code) ? error.code : 'ANALYSIS_FAILED';
+    const upstreamStatus = Number.isInteger(error.upstreamStatus) ? error.upstreamStatus : null;
+    const transportCode = ['ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED'].includes(error.transportCode) ? error.transportCode : null;
+    console.warn('Food analysis failed:', { code: failureCode, model: config.geminiModel, upstreamStatus, transportCode });
+    await ref.set({ status: 'failed', imageHash: hash, model: config.geminiModel, failureCode, upstreamStatus, createdAt: new Date().toISOString() });
+    throw error;
+  }
 });
