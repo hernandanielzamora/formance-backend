@@ -11,9 +11,11 @@ trainingRoutes.use(requireAuth,(req,res,next)=>{
   next();
 });
 trainingRoutes.use(sessionRoutes);
-async function visible(req,kind){
+async function visible(req,kind,privateOnly=false){
   const collection=req.app.locals.firebase.db.collection(kind);
-  const snapshots=isAdmin(req.identity)?[await collection.get()]:await Promise.all([collection.where('visibility','==','public').get(),collection.where('ownerId','==',req.identity.uid).get()]);
+  const snapshots=privateOnly
+    ? [await (isAdmin(req.identity)?collection.where('visibility','==','private'):collection.where('visibility','==','private').where('ownerId','==',req.identity.uid)).get()]
+    : isAdmin(req.identity)?[await collection.get()]:await Promise.all([collection.where('visibility','==','public').get(),collection.where('ownerId','==',req.identity.uid).get()]);
   const items=new Map();
   for(const snapshot of snapshots) for(const doc of snapshot.docs){const item={...doc.data(),id:doc.id};if(!item.archived && canRead(req.identity,item)) items.set(item.id,present(req.identity,item));}
   return [...items.values()];
@@ -25,18 +27,24 @@ trainingRoutes.get('/catalog',async(req,res)=>{
   res.json({exercises:data.exercises,workouts:data.workouts,userGoal:goal,routineTemplates:data.routines.filter(r=>r.visibility==='public').map(r=>({...r,recommended:(r.goals||[]).includes(goal)})).sort((a,b)=>Number(b.recommended)-Number(a.recommended))});
 });
 trainingRoutes.get('/routines',async(req,res)=>{
-  const [items,settings]=await Promise.all([visible(req,'routines'),req.trainingUser.collection('settings').doc('training').get()]);
+  const [items,settings]=await Promise.all([visible(req,'routines',true),req.trainingUser.collection('settings').doc('training').get()]);
   const active=settings.exists?settings.data().activeRoutineId:null;
-  res.json({routines:items.filter(r=>r.visibility==='private'),activeRoutineId:items.some(r=>r.id===active)?active:null});
+  let activeRoutineId=items.some(r=>r.id===active)?active:null;
+  // Public routines can also be active. Read only that document instead of every template.
+  if(!activeRoutineId && typeof active==='string' && /^[a-zA-Z0-9-]{1,80}$/.test(active)){
+    const snapshot=await req.app.locals.firebase.db.collection('routines').doc(active).get();
+    if(snapshot.exists && !snapshot.data().archived && canRead(req.identity,snapshot.data())) activeRoutineId=active;
+  }
+  res.json({routines:items,activeRoutineId});
 });
 function responseError(res,status,message){return res.status(status).json({error:{code:status===403?'FORBIDDEN':status===409?'VERSION_CONFLICT':'NOT_FOUND',message}});}
 for(const kind of ['exercises','workouts','routines']){
   const singular=kind==='exercises'?'exercise':kind==='workouts'?'workout':'routine';
   async function input(req,update){
-    const data=await catalog(req);
     if(kind==='exercises') return validateExercise(req.body,update);
-    if(kind==='workouts') return validateWorkout(req.body,data.exercises,update);
-    return validateRoutine(req.body,data.workouts,data.exercises,update);
+    if(kind==='workouts') return validateWorkout(req.body,await visible(req,'exercises'),update);
+    const [workouts,exercises]=await Promise.all([visible(req,'workouts'),visible(req,'exercises')]);
+    return validateRoutine(req.body,workouts,exercises,update);
   }
   trainingRoutes.post(`/${kind}`,async(req,res)=>{
     const fields=await input(req,false);const id=randomUUID();const now=new Date().toISOString();
