@@ -2,7 +2,9 @@
 
 El generador agrega datos simulados a una cuenta real para mostrar los logs.
 No representa actividad realizada, resultados clínicos ni un estudio observacional.
-Todos los registros llevan `[DEMO SIMULADA]` en la nota y `demoData.simulated: true`.
+La carga inicial identifica los registros con `[DEMO SIMULADA]` en la nota y
+`demoData.simulated: true`. La revisión de las comidas descripta al final conserva
+esa procedencia internamente y reemplaza sus notas visibles por preparaciones.
 
 ## Uso
 
@@ -54,8 +56,9 @@ Se usó una copia privada de Fuerza flexible · 3 días para una cuenta de mante
 2. Reportes: elegir **5 de octubre de 2026** para mostrar una semana cerrada completa
    y su comparación con la anterior. Cambiar a Historial y filtrar entrenamiento,
    alimentación o peso; abrir cada detalle y sus notas de demostración.
-3. Reportes: semana del **21 de septiembre** para mostrar una sesión interrumpida y
-   el ejemplo de nutriente desconocido, sin contarlo como cero.
+3. Reportes: semana del **21 de septiembre** para mostrar una sesión interrumpida.
+   La carga original incluía un nutriente desconocido; las comidas revisadas tienen
+   sus cuatro nutrientes completos. Los reportes siguen distinguiendo null de cero.
 4. Alimentación: seleccionar **15 de octubre** para mostrar cuatro comidas y totales
    frente a los objetivos existentes del perfil.
 5. Peso: consultar el último mes y seleccionar puntos del gráfico.
@@ -66,3 +69,28 @@ una identidad de navegador simulada y una API temporal limitada a GET en localho
 las consultas de perfil, calendario, reportes, comidas y peso leyeron Firestore real.
 No se usaron contraseñas ni se modificó la autenticación de la cuenta durante la prueba.
 La API temporal no forma parte del código del proyecto ni del despliegue.
+
+## Revisión de las comidas de presentación
+
+```powershell
+# Primero simular; --apply habilita la actualización.
+npm.cmd run refine:study -- --uid UID --email CORREO --from 2026-09-16 --to 2026-10-15
+npm.cmd run refine:study -- --uid UID --email CORREO --from 2026-09-16 --to 2026-10-15 --apply
+```
+
+Esta operación se limita a `foodLogs` generados por el manifiesto. No permite cambios
+en sesiones, pesos ni rutinas. Omite comidas archivadas o editadas desde la carga;
+respalda cada documento antes de modificarlo en `beforePresentationV2`, dentro del
+manifiesto. La ejecución repetida devuelve `alreadyApplied: true` y no toca los datos.
+
+Las 120 comidas ahora alternan 28 preparaciones: tostadas, avena, yogur con fruta,
+pollo con arroz, fideos con carne, ensaladas de legumbres, atún y pescado, entre otras.
+Las porciones varían por ingrediente, con pesos crudos/cocidos explícitos en los nombres
+y huevos en unidades aproximadas de 50 g. Los nutrientes y totales se recalculan a
+partir de cada porción. Las notas muestran el plato, sin anuncios de demo.
+
+Los valores siguen siendo estimaciones ilustrativas de carga manual: no son registros
+reales de consumo ni respuestas atribuidas a USDA o Gemini. El origen simulado queda en
+`demoData`, junto a `presentationRevision: 2` y `nutritionValues: illustrative-estimates`.
+No se consume IA. Se comprobaron 30 días con cuatro comidas, 28 notas de platos distintas,
+idempotencia y conservación exacta de sesiones, pesos y rutina frente al respaldo.
