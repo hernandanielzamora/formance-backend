@@ -2,6 +2,9 @@
 
 ## Reportes
 
+Datos simulados para una cuenta de presentación, con carga privada e idempotente:
+[generador y recorrido del caso de demostración](docs/presentation-study.md).
+
 Reporte semanal e historial privados calculados desde los logs, sin consumir IA.
 Ver [cálculos y límites](docs/reports.md). Incluye comparación con el período
 anterior, evolución de peso y cobertura de datos. La adherencia histórica queda pendiente.
