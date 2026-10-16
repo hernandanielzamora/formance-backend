@@ -12,7 +12,8 @@
     "check:food": "node scripts/check-food.js",
     "grant:admin": "node scripts/grant-admin.js",
     "migrate:training": "node scripts/migrate-training.js",
-    "seed:training": "node scripts/seed-training-catalog.js"
+    "seed:training": "node scripts/seed-training-catalog.js",
+    "seed:study": "node scripts/seed-study-data.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
