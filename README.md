@@ -1,5 +1,11 @@
 # Formance · Backend
 
+Análisis semanal manual con Gemini, caché persistida y cuotas separadas de fotos:
+[contrato, privacidad y política de uso](docs/weekly-ai-analysis.md).
+
+[Validación real y preparación E4](docs/e4-verification.md): fotografía, análisis
+semanal, persistencia y caché comprobados con una cuenta y servicios reales.
+
 ## Reportes
 
 Datos simulados para una cuenta de presentación, con carga privada e idempotente:
@@ -42,7 +48,8 @@ por usuario, conservan snapshots y se guardan con control de versión. Los repor
 agregados semanales están disponibles; la planificación semanal histórica queda pendiente.
 
 API independiente para el MVP del seminario. Node.js + Express + Firebase Admin.
-Estado: validación de identidad y permisos; todavía no hay datos de negocio.
+Estado: identidad y permisos, perfil/objetivo, biblioteca y sesiones de entrenamiento,
+alimentación, peso y reportes con interpretación semanal opcional por IA implementados.
 `GET /api/auth/me` valida un ID token de Firebase y su revocación.
 `GET /api/admin/session` exige además correo verificado y custom claim `admin: true`.
 El registro y login se realizan con el SDK de Firebase del frontend, sin enviar contraseñas a la API.
@@ -137,7 +144,8 @@ y volver a entrar; la aplicación redirige al administrador a `/admin`.
 npm.cmd test
 ```
 
-Sin tareas programadas, pagos, correo externo, IA ni acceso al proyecto Nutrivo.
+Sin tareas programadas, pagos, correo externo ni acceso al proyecto Nutrivo.
+Gemini se usa para fotos de comidas y análisis semanal manual, con cuotas separadas.
 `.env`, credenciales y dependencias se excluyen de Git. Versionar `package-lock.json`.
 Repositorio independiente: https://github.com/hernandanielzamora/formance-backend.
 La base inicial se registra en `main`; `dev` será la rama de integración y cada feature
