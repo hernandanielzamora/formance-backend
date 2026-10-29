@@ -22,5 +22,8 @@ export function parseEnv(source = process.env) {
   const geminiModel = source.GEMINI_MODEL?.trim() || 'gemini-3.5-flash-lite';
   if (!['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.8-flash'].includes(geminiModel)) throw new Error('GEMINI_MODEL debe ser un modelo de visión con nivel gratuito admitido.');
   return { port, nodeEnv, frontendOrigin, firebaseProjectId, usdaApiKey: source.USDA_API_KEY?.trim() || '', geminiApiKey: source.GEMINI_API_KEY?.trim() || '', geminiModel,
-    foodAnalysisUserDailyLimit: limit('FOOD_AI_USER_DAILY_LIMIT', 3, 100), foodAnalysisGlobalDailyLimit: limit('FOOD_AI_GLOBAL_DAILY_LIMIT', 20, 1000), foodAnalysisGlobalMinuteLimit: limit('FOOD_AI_GLOBAL_MINUTE_LIMIT', 3, 30) };
+    foodAnalysisUserDailyLimit: limit('FOOD_AI_USER_DAILY_LIMIT', 3, 100), foodAnalysisGlobalDailyLimit: limit('FOOD_AI_GLOBAL_DAILY_LIMIT', 20, 1000), foodAnalysisGlobalMinuteLimit: limit('FOOD_AI_GLOBAL_MINUTE_LIMIT', 3, 30),
+    weeklyAnalysisUserWeeklyLimit: limit('WEEKLY_AI_USER_WEEKLY_LIMIT', 2, 20),
+    weeklyAnalysisGlobalDailyLimit: limit('WEEKLY_AI_GLOBAL_DAILY_LIMIT', 10, 1000),
+    weeklyAnalysisGlobalMinuteLimit: limit('WEEKLY_AI_GLOBAL_MINUTE_LIMIT', 1, 30) };
 }

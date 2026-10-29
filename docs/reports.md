@@ -40,6 +40,7 @@ entre ambas (null si hay menos de dos fechas). La comparación semanal muestra
 diferencia de promedios, indicando cuántos días tienen datos. No se rellenan días
 vacíos ni se arrastra el peso inicial a otras semanas. Ver [peso](weight.md).
 
-Pendiente: snapshots históricos de
-planificación/objetivos para adherencia; interpretación opcional mediante IA.
+La interpretación opcional mediante IA se solicita por una operación separada:
+[análisis semanal](weekly-ai-analysis.md). Este GET conserva su cálculo sin IA.
+Pendiente: snapshots históricos de planificación/objetivos para adherencia.
 No se infiere incumplimiento a partir de días sin registros.
