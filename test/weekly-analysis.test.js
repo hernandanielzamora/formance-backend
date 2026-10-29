@@ -6,7 +6,9 @@ import { fixture } from '../test-support/firestore.js';
 import { weeklyPayload, weeklyFingerprint, validateWeeklyAnalysis } from '../src/services/weekly-analysis.js';
 import { buildWeeklyReport, weeklyRange } from '../src/services/reports.js';
 
-const analysis = { summary: 'Según los registros disponibles, hay datos parciales.', trends: ['Hay registros de alimentación.'], reviewPoints: ['No existen datos suficientes para determinar adherencia.'] };
+const analysis = { summary: 'Según los registros disponibles, hay datos parciales.', comparison: 'La semana anterior no tiene registros comparables.',
+  insights: { training: 'Faltan sesiones registradas.', nutrition: 'Hay un día con alimentos registrados.', weight: 'Faltan mediciones.' },
+  trends: ['Hay registros de alimentación.'], reviewPoints: ['No existen datos suficientes para determinar adherencia.'], nextWeekFocus: ['Revisá las porciones estimadas antes de guardar.'] };
 const response = (value = analysis) => new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: typeof value === 'string' ? value : JSON.stringify(value) }] } }] }), { status: 200 });
 const food = calories => ({ localDate: '2026-01-05', timeZone: 'UTC', note: 'PERSONAL_SECRET', archived: false,
   items: [{ itemId: 'PRIVATE_ITEM', name: 'PRIVATE_NAME', source: 'manual', totals: { calories, protein: 10, fat: 5, carbohydrates: 20 } }] });
@@ -14,6 +16,7 @@ async function harness(options = {}) {
   const { db, store } = fixture();
   store.set('users/alice/foodLogs/private-id', food(200));
   store.set('users/bob/foodLogs/other-id', food(9000));
+  store.set('users/alice', { goal: 'recomposition', name: 'PRIVATE_PROFILE', email: 'PRIVATE_EMAIL', targets: { calories: 999 } });
   const config = parseEnv({ NODE_ENV: 'test', GEMINI_API_KEY: 'test-secret', WEEKLY_AI_GLOBAL_MINUTE_LIMIT: '30', ...options.env });
   const app = createApp({ config }); let calls = 0; const requests = [];
   app.locals.firebase = { db, auth: { async verifyIdToken(uid) { return { uid, email_verified: uid !== 'unverified' }; } } };
@@ -34,9 +37,15 @@ test('Weekly analysis requires verified identity, validates week and rejects arb
     assert.equal((await h.post('alice', { weekStart: '2026-01-05', timeZone: 'UTC', uid: 'bob' })).status, 400);
     for (const body of [{ weekStart: '2026-01-06', timeZone: 'UTC' }, { weekStart: '2099-01-05', timeZone: 'UTC' }, { weekStart: '2026-01-05', timeZone: 'invalid' }]) assert.equal((await h.post('alice', body)).status, 400);
     assert.equal((await h.post('empty')).status, 400); assert.equal(h.calls(), 0);
-    const result = await h.post(); assert.equal(result.status, 200); assert.deepEqual((await result.json()).analysis, analysis);
+    const result = await h.post(); assert.equal(result.status, 200);
+    const returned = (await result.json()).analysis;
+    assert.deepEqual({ ...returned, comparison: analysis.comparison }, analysis);
+    assert.match(returned.comparison, /período anterior no tiene registros/);
     const sent = JSON.stringify(JSON.parse(h.requests[0][1].body));
-    for (const secret of ['PERSONAL_SECRET', 'PRIVATE_ITEM', 'PRIVATE_NAME', 'private-id', 'alice', 'bob', '9000']) assert.ok(!sent.includes(secret), secret);
+    for (const secret of ['PERSONAL_SECRET', 'PRIVATE_ITEM', 'PRIVATE_NAME', 'PRIVATE_PROFILE', 'PRIVATE_EMAIL', 'private-id', 'alice', 'bob', '9000']) assert.ok(!sent.includes(secret), secret);
+    const payload = JSON.parse(JSON.parse(h.requests[0][1].body).contents[0].parts[1].text);
+    assert.equal(payload.context.currentGoal, 'recomposition'); assert.equal(payload.context.goalAppliesHistorically, false);
+    assert.equal(payload.schemaVersion, 2); assert.equal(payload.evidence.coverage.previousHasRecords, false);
     assert.equal(h.requests[0][1].signal instanceof AbortSignal, true);
     assert.equal(result.headers.get('cache-control'), 'no-store');
     assert.equal((await (await h.weekly()).json()).current.food.nutrients.calories.value, 200);
@@ -63,6 +72,18 @@ test('Global daily and minute quotas block upstream generation independently of 
     try { assert.equal((await h.post()).status, 200); assert.equal((await h.post('bob')).status, 429); assert.equal(h.calls(), 1); }
     finally { await h.close(); }
   }
+});
+test('Goal context participates in the cache without resetting the existing weekly quota', async () => {
+  const h = await harness();
+  try {
+    const first = await (await h.post()).json();
+    h.store.set('users/alice', { goal: 'muscle' });
+    const changed = await (await h.post()).json();
+    assert.notEqual(first.fingerprint, changed.fingerprint); assert.equal(h.calls(), 2);
+    h.store.set('users/alice', { goal: 'maintain' });
+    assert.equal((await h.post()).status, 429);
+    assert.equal(h.store.get('users/alice/weeklyAnalysisUsage/2026-01-05').count, 2);
+  } finally { await h.close(); }
 });
 test('Unconfigured Gemini does not spend quota; normal weekly report is independent', async () => {
   const h = await harness({ env: { GEMINI_API_KEY: '' } });
@@ -122,5 +143,10 @@ test('Hash ignores identity and notes but changes with food, training, weight or
   assert.notEqual(hash(original), hash(make([{ id: 'id', localDate: '2026-01-05', status: 'completed', performedEntries: [] }], [food(200)])));
   assert.notEqual(hash(original), hash(make([], [food(200)], [{ id: '2026-01-05', localDate: '2026-01-05', weightKg: 70 }])));
   assert.notEqual(hash(original), weeklyFingerprint(original, 'different-model'));
+  assert.notEqual(hash(original), weeklyFingerprint({ ...original, schemaVersion: 1 }, 'test-model'));
+  assert.notEqual(hash(original), hash(weeklyPayload(buildWeeklyReport(range, [], [food(200)]), { goal: 'muscle' })));
+  assert.equal(weeklyPayload(buildWeeklyReport(range, [], [food(200)]), { goal: 'PERSONAL_SECRET' }).context.currentGoal, null);
   for (const invalid of [null, [], {}, { ...analysis, extra: true }, { ...analysis, trends: [] }, { ...analysis, summary: ' ' }, { ...analysis, reviewPoints: [5] }]) assert.throws(() => validateWeeklyAnalysis(invalid));
+  for (const invalid of [{ ...analysis, comparison: '' }, { ...analysis, insights: { ...analysis.insights, extra: 'x' } }, { ...analysis, insights: { training: 'only' } },
+    { ...analysis, nextWeekFocus: [] }, { ...analysis, nextWeekFocus: Array(4).fill('too many') }, { ...analysis, summary: 'x'.repeat(1201) }]) assert.throws(() => validateWeeklyAnalysis(invalid));
 });

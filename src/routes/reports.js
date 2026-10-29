@@ -24,7 +24,7 @@ reportRoutes.get('/weekly', async (req, res) => {
 });
 reportRoutes.post('/weekly-analysis', async (req, res) => {
   fields(req.body, ['weekStart', 'timeZone']);
-  const report = await loadReport(req, req.body);
+  const [report, profile] = await Promise.all([loadReport(req, req.body), req.app.locals.firebase.db.collection('users').doc(req.identity.uid).get()]);
   res.json(await analyzeWeeklyReport({ db: req.app.locals.firebase.db, uid: req.identity.uid,
-    config: req.app.locals.config, report, fetcher: req.app.locals.weeklyAnalysisFetch || fetch }));
+    config: req.app.locals.config, report, context: { goal: profile.exists ? profile.data().goal : null }, fetcher: req.app.locals.weeklyAnalysisFetch || fetch }));
 });

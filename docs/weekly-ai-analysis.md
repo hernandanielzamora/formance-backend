@@ -1,5 +1,9 @@
 # Análisis semanal con IA
 
+Nota de versión: el diseño de persistencia/cuotas de este documento se conserva.
+El ejemplo de respuesta y validación de tres campos describe v1. El contrato actual
+es [v2, interpretación ampliada](weekly-ai-insights.md), con seis campos y otra huella.
+
 POST `/api/reports/weekly-analysis`, con Bearer token Firebase y correo verificado.
 Body exacto: `{ "weekStart": "2026-10-05", "timeZone": "America/Argentina/Buenos_Aires" }`.
 No acepta UID ni otros campos. `weekStart` debe ser lunes y no futuro.

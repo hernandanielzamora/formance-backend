@@ -3,6 +3,8 @@
 Análisis semanal manual con Gemini, caché persistida y cuotas separadas de fotos:
 [contrato, privacidad y política de uso](docs/weekly-ai-analysis.md).
 
+Nueva interpretación ampliada v2: [comparación semanal, evidencia y foco de seguimiento](docs/weekly-ai-insights.md).
+
 [Validación real y preparación E4](docs/e4-verification.md): fotografía, análisis
 semanal, persistencia y caché comprobados con una cuenta y servicios reales.
 
