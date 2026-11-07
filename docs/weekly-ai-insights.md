@@ -69,7 +69,7 @@ cobertura y límites. Las lecturas por área, tendencias y foco siguen siendo in
 de Gemini. El resto de la respuesta es texto generado y requiere las cautelas normales
 de interpretación; el prompt no es una garantía semántica de todo su contenido.
 
-El prompt pide idealmente 400–650 palabras, sin listas repetidas de totales. Las
+El prompt pide idealmente 140–220 palabras, con una frase por área y un próximo paso breve. El contrato v2 y su huella se conservan: los análisis guardados siguen disponibles con su extensión anterior, dentro del detalle desplegable del frontend. La vista principal del Balance semanal usa métricas y señales derivadas del reporte, sin generar otra interpretación. Las
 acciones admitidas son de seguimiento/revisión: completar cargas para comparar,
 revisar porciones estimadas, registrar peso con condiciones comparables o revisar
 la distribución ya elegida. No prescribe una dieta/rutina, cargas/ingestas nuevas,

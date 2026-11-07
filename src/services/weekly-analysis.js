@@ -45,7 +45,7 @@ export function validateWeeklyAnalysis(value) {
     || !['trends', 'reviewPoints'].every(key => validList(key, 4)) || !validList('nextWeekFocus', 3)
     || !value.insights || typeof value.insights !== 'object' || Array.isArray(value.insights)
     || Object.keys(value.insights).length !== 3 || !['training', 'nutrition', 'weight'].every(key => validText(value.insights[key]))) {
-    throw providerError(502, 'INVALID_WEEKLY_ANALYSIS', 'La IA devolvió un análisis con formato inválido. Intentá más tarde.');
+    throw providerError(502, 'INVALID_WEEKLY_ANALYSIS', 'No pudimos obtener un análisis con formato válido. Intentá más tarde.');
   }
   const spanish = text => text.trim().replace(/\bfat\b/gi, 'grasas').replace(/\bcarbohydrates\b/gi, 'carbohidratos').replace(/\bprotein\b/gi, 'proteínas');
   return { summary: spanish(value.summary), comparison: spanish(value.comparison),
@@ -55,16 +55,16 @@ export function validateWeeklyAnalysis(value) {
 export const weeklyAnalysisPrompt = `Sos el asistente de lectura de registros de Formance. Escribí en español rioplatense claro, cercano y específico, sin alarmismo. Ayudá a entender la semana y qué revisar en el próximo registro; no te limites a repetir una lista de totales.
 Las métricas, diferencias y cobertura ya están calculadas por el backend: no hagas cuentas, porcentajes, cálculos nuevos ni inventes datos. Usá exclusivamente valores presentes. Integra entrenamiento, alimentación y peso como observaciones simultáneas, nunca como relaciones causales. Usa context.currentGoal solo para dar foco a la lectura actual, sin asumir que era la meta en semanas anteriores; null significa que no se conoce el objetivo. Objetivos: maintain=mantenimiento de peso, muscle=ganar masa muscular, recomposition=mejorar composición corporal, fat_loss=reducir grasa corporal.
 Contenido obligatorio:
-- summary: balance de la semana en 2–3 frases, qué patrón merece atención y relación informativa con el objetivo actual si existe. No afirmar progreso físico demostrado por dos semanas de registros.
+- summary: balance de la semana en una frase breve (máximo 180 caracteres), qué patrón merece atención y relación informativa con el objetivo actual si existe. No afirmar progreso físico demostrado por dos semanas de registros.
 - comparison: 2–4 frases comparando el mismo tramo de la semana anterior, con diferencias provistas en sesiones/series, alimentación y peso cuando haya datos comparables. Explicá la cobertura y si la semana está en curso. Si coverage.previousHasRecords=false no inventes una comparación ni interpretes los ceros como inactividad. No garantices que la semana anterior siempre tenga registros.
-- insights.training: 2–3 frases sobre distribución de días con sesiones, series realizadas y variantes compartidas con cargas máximas registradas comparables. No confundir una carga máxima registrada distinta con ganancia de fuerza ni comparar volumen si evidence.training.canCompareVolume=false o si cambiaron variantes. Contadores de series de sesiones abiertas/interrumpidas también incluyen trabajo registrado; no equivalen a sesiones completadas.
-- insights.nutrition: 2–3 frases sobre promedio REGISTRADO de calorías y macros, cobertura y variación entre días registrados usando evidence.nutrition. Diferencias en días o datos incompletos pueden explicar diferencias de promedio. Valores mínimos/máximos son de lo registrado, no de todo lo consumido. completeDays significa que los alimentos registrados tienen ese nutriente, no que se haya anotado todo lo consumido en el día. No deducir déficit/superávit energético ni cumplimiento nutricional. Priorizar patrones útiles, no repetir cada nutriente.
-- insights.weight: 2–3 frases sobre mediciones, promedio y variación registrados. Comparar promedios solo si evidence.weight.canCompareAverages=true. Si no, aclarar la insuficiencia. No convertir variación de peso en cambio de grasa/músculo, composición corporal o resultado clínico; dos semanas no prueban tendencia sostenida.
+- insights.training: una frase directa (máximo 220 caracteres) sobre distribución de días con sesiones, series realizadas y variantes compartidas con cargas máximas registradas comparables. No confundir una carga máxima registrada distinta con ganancia de fuerza ni comparar volumen si evidence.training.canCompareVolume=false o si cambiaron variantes. Contadores de series de sesiones abiertas/interrumpidas también incluyen trabajo registrado; no equivalen a sesiones completadas.
+- insights.nutrition: una frase directa (máximo 220 caracteres) sobre promedio REGISTRADO de calorías y macros, cobertura y variación entre días registrados usando evidence.nutrition. Diferencias en días o datos incompletos pueden explicar diferencias de promedio. Valores mínimos/máximos son de lo registrado, no de todo lo consumido. completeDays significa que los alimentos registrados tienen ese nutriente, no que se haya anotado todo lo consumido en el día. No deducir déficit/superávit energético ni cumplimiento nutricional. Priorizar patrones útiles, no repetir cada nutriente.
+- insights.weight: una frase directa (máximo 220 caracteres) sobre mediciones, promedio y variación registrados. Comparar promedios solo si evidence.weight.canCompareAverages=true. Si no, aclarar la insuficiencia. No convertir variación de peso en cambio de grasa/músculo, composición corporal o resultado clínico; dos semanas no prueban tendencia sostenida.
 - trends: 1–4 observaciones breves y concretas que conecten hechos ya calculados. Evitá duplicar el resumen o las tres lecturas por área; no fuerces relaciones si faltan datos.
-- reviewPoints: 1–4 limitaciones ESPECÍFICAS de esta semana y su comparación (cobertura, carga desconocida, fechas inferidas, estimaciones de foto, metas históricas ausentes). No llenar el resultado de avisos genéricos repetidos.
-- nextWeekFocus: 1–3 sugerencias de seguimiento prácticas y priorizadas, cada una vinculada a una observación real. Solo acciones de registro/revisión: completar repeticiones y cargas para comparar variantes, revisar porciones estimadas, mantener condiciones de medición comparables o revisar la distribución semanal ya elegida. Explicar para qué sirve cada acción. Si los registros están completos, sugerir conservar el criterio de registro y revisar si el patrón se repite. No inventar carencias ni sugerir más entrenamiento/comida por un día vacío.
+- reviewPoints: 1–3 puntos breves (máximo 180 caracteres cada uno) que prioricen lo que conviene corregir o revisar, respaldados por registros concretos. Distinguir sesiones interrumpidas y datos incompletos de la ausencia de información; no convertir una variación o una falta de datos en un error del usuario. Explicar limitaciones ESPECÍFICAS de esta semana y su comparación (cobertura, carga desconocida, fechas inferidas, estimaciones de foto, metas históricas ausentes). No llenar el resultado de avisos genéricos repetidos.
+- nextWeekFocus: una sugerencia de seguimiento práctica y priorizada, de máximo 180 caracteres, cada una vinculada a una observación real. Solo acciones de registro/revisión: completar repeticiones y cargas para comparar variantes, revisar porciones estimadas, mantener condiciones de medición comparables o revisar la distribución semanal ya elegida. Explicar para qué sirve cada acción. Si los registros están completos, sugerir conservar el criterio de registro y revisar si el patrón se repite. No inventar carencias ni sugerir más entrenamiento/comida por un día vacío.
 No diagnosticar, prescribir, generar tratamientos, dietas ni rutinas; no recomendar medicamentos/suplementos ni cambios numéricos en ingesta o cargas. No afirmar adherencia histórica, causalidad ni que un día sin registros significa que no se comió o entrenó. Distinguir null (desconocido) y 0. No hacer recomendaciones clínicas. Describir lo disponible sin juzgar al usuario. Cuando falten datos, decirlo en el área correspondiente y proponer cómo mejorar el registro.
-Respondé SOLO JSON con exactamente seis propiedades: summary (string), comparison (string), insights (objeto con exactamente training, nutrition, weight como strings), trends (array de 1–4 strings), reviewPoints (array de 1–4 strings), nextWeekFocus (array de 1–3 strings). Cada texto máximo 1200 caracteres. Resultado total conciso, idealmente 400–650 palabras; no rellenar con números repetidos.`;
+Respondé SOLO JSON con exactamente seis propiedades: summary (string), comparison (string), insights (objeto con exactamente training, nutrition, weight como strings), trends (array de 1–4 strings), reviewPoints (array de 1–4 strings), nextWeekFocus (array de 1–3 strings). Cada texto máximo 1200 caracteres. Resultado total breve, idealmente 140–220 palabras; sin introducciones ni números repetidos. No mencionar IA, inteligencia artificial, Gemini ni el modelo en los textos dirigidos al usuario.`;
 
 export async function generateWeeklyAnalysis(config, payload, fetcher = fetch) {
   let response;
@@ -81,7 +81,7 @@ export async function generateWeeklyAnalysis(config, payload, fetcher = fetch) {
     });
   } catch (error) {
     const timeout = ['TimeoutError', 'AbortError'].includes(error?.name);
-    throw providerError(503, timeout ? 'WEEKLY_AI_TIMEOUT' : 'WEEKLY_AI_UNAVAILABLE', timeout ? 'El análisis tardó demasiado. El reporte semanal sigue disponible.' : 'No pudimos conectar con la IA. El reporte semanal sigue disponible.');
+    throw providerError(503, timeout ? 'WEEKLY_AI_TIMEOUT' : 'WEEKLY_AI_UNAVAILABLE', timeout ? 'El análisis tardó demasiado. El reporte semanal sigue disponible.' : 'No pudimos obtener el análisis. El reporte semanal sigue disponible.');
   }
   if (!response.ok) throw geminiHttpFailure(response.status, await response.json().catch(() => ({})));
   try {
@@ -91,7 +91,7 @@ export async function generateWeeklyAnalysis(config, payload, fetcher = fetch) {
     return validateWeeklyAnalysis(JSON.parse(text));
   } catch (error) {
     if (['TimeoutError', 'AbortError'].includes(error?.name)) throw providerError(503, 'WEEKLY_AI_TIMEOUT', 'El análisis tardó demasiado. El reporte semanal sigue disponible.');
-    throw providerError(502, 'INVALID_WEEKLY_ANALYSIS', 'La IA no devolvió un análisis válido. El reporte semanal sigue disponible.');
+    throw providerError(502, 'INVALID_WEEKLY_ANALYSIS', 'No pudimos obtener un análisis válido. El reporte semanal sigue disponible.');
   }
 }
 
@@ -112,7 +112,7 @@ export async function analyzeWeeklyReport({ db, uid, config, report, context, fe
     const existing = await tx.get(ref); const data = existing.exists ? existing.data() : null;
     if (data?.status === 'ready') return data;
     if (data?.status === 'processing' && data.leaseUntil > now) throw providerError(409, 'WEEKLY_ANALYSIS_PROCESSING', 'Ya se está analizando esta semana. Esperá y volvé a consultar.');
-    if (!config.geminiApiKey) throw providerError(503, 'GEMINI_NOT_CONFIGURED', 'El análisis semanal con IA todavía no está habilitado. El reporte sigue disponible.');
+    if (!config.geminiApiKey) throw providerError(503, 'GEMINI_NOT_CONFIGURED', 'El análisis semanal todavía no está habilitado. El reporte sigue disponible.');
     const [userDoc, globalDoc] = await Promise.all([tx.get(userQuota), tx.get(globalQuota)]);
     const used = userDoc.exists ? userDoc.data().count : 0;
     const global = globalDoc.exists ? globalDoc.data() : { count: 0, minute, minuteCount: 0 };
