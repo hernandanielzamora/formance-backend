@@ -88,6 +88,8 @@ export function weeklyGlance(report, { goal: rawGoal = null, targets = null, rou
   const t = training(report, planned, since); const n = nutrition(report, targets, goal); const w = weight(report, goal);
   const partial = report.period.isPartial;
   const wins = []; const improvements = [];
+  const list = items => items.length > 1 ? `${items.slice(0, -1).join(', ')} y ${items.at(-1)}` : items[0];
+
   // Entrenamiento
   const consistent = t.planned ? t.completedPlanned === t.planned : t.completed >= 3;
   const consistency = t.planned ? `Entrenaste ${t.completedPlanned} de ${t.planned} días planificados${partial ? ' hasta hoy' : ''}` : `Completaste ${t.completed} entrenamientos`;
@@ -116,6 +118,9 @@ export function weeklyGlance(report, { goal: rawGoal = null, targets = null, rou
 
   // Una entrada por área antes de repetir: la lectura cubre entrenamiento, comida y peso.
   const spread = list => { const order = []; const pending = [...list]; while (pending.length) for (const area of ['training', 'nutrition', 'weight']) { const index = pending.findIndex(item => item.area === area); if (index >= 0) order.push(...pending.splice(index, 1)); } return order; };
+  // Si no hubo logros claros, rescatar lo que sí se registró (motiva a seguir).
+  if (!wins.length && (t.completed || n.daysLogged || w.count)) wins.push({ area: t.completed ? 'training' : n.daysLogged ? 'nutrition' : 'weight',
+    text: `${list([t.completed ? `Completaste ${t.completed} ${t.completed === 1 ? 'entrenamiento' : 'entrenamientos'}` : null, n.daysLogged ? `registraste comidas ${n.daysLogged} ${n.daysLogged === 1 ? 'día' : 'días'}` : null, w.count ? `te pesaste ${w.count} ${w.count === 1 ? 'vez' : 'veces'}` : null].filter(Boolean))}.`.replace(/^./, c => c.toUpperCase()) });
   const statuses = [t.status, n.status, w.status];
   const hasRecords = statuses.some(status => status !== 'empty');
   const good = statuses.filter(status => status === 'good').length; const attention = statuses.filter(status => status === 'attention').length;
@@ -129,7 +134,6 @@ export function weeklyGlance(report, { goal: rawGoal = null, targets = null, rou
   if (best) positives.push(t.records.length === 1 ? `subiste carga en ${best.name}` : 'subiste cargas');
   if (n.status === 'good') positives.push('comiste en objetivo la mayoría de los días');
   if (w.deltaKg && w.aligned) positives.push(`${w.deltaKg < 0 ? 'bajaste' : 'subiste'} ${fmt(Math.abs(w.deltaKg), 1)} kg`);
-  const list = items => items.length > 1 ? `${items.slice(0, -1).join(', ')} y ${items.at(-1)}` : items[0];
   const firstImprovement = spread(improvements)[0];
   const text = !hasRecords ? 'Registrá un entrenamiento, una comida o tu peso para ver tu lectura semanal.'
     : [positives.length ? `${list(positives.slice(0, 3)).replace(/^./, c => c.toUpperCase())}.` : null, firstImprovement ? (positives.length ? `Para ajustar: ${firstImprovement.short}.` : `Lo principal: ${list(spread(improvements).slice(0, 2).map(item => item.short))}.`) : null].filter(Boolean).join(' ');

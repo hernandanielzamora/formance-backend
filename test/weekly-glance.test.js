@@ -60,3 +60,8 @@ test('Lectura: sin objetivo ni rutina describe lo registrado; sin registros invi
   assert.equal(plannedWeekdays(null), null);
   assert.deepEqual(plannedWeekdays(routine), [0, 1, 3, 4]);
 });
+
+test('Lectura: una semana sin logros claros rescata lo registrado', () => {
+  const g = glance('2026-01-12', '2026-01-20', { sessions: [...previous.sessions, session('2026-01-12', 70)], meals: [meal('2026-01-12', 3200, 90), meal('2026-01-13', 3300, 90)], weights: [] });
+  assert.equal(g.wins.length, 1); assert.match(g.wins[0].text, /^Completaste 1 entrenamiento y registraste comidas 2 días\.$/);
+});
