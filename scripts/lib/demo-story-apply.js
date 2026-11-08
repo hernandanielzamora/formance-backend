@@ -17,7 +17,7 @@ export async function applyDemoStory({ db, uid, from = '2026-10-01', to = '2026-
   if (!templateDoc.exists || templateDoc.data().archived || templateDoc.data().visibility !== 'public') throw new Error(`Falta la plantilla pública ${storyTemplateId}. Ejecutar seed:training primero.`);
   const previous = manifestDoc.exists ? manifestDoc.data().original : { profile: { goal: profile.goal, reference: profile.reference || null, targets: profile.targets || null }, activeRoutineId: settingsDoc.data()?.activeRoutineId || null };
   const routine = routineDoc.exists ? { ...routineDoc.data(), id: storyRoutineId } : { ...templateDoc.data(), id: storyRoutineId, ownerId: uid, visibility: 'private', source: 'personal',
-    sourceTemplateId: storyTemplateId, version: 1, archived: false, createdAt: now, updatedAt: now, demoData: { simulated: true, purpose: 'presentation', story: storyVersion } };
+    sourceTemplateId: storyTemplateId, version: 1, archived: false, createdAt: '2026-09-30T12:00:00.000Z', updatedAt: now, demoData: { simulated: true, purpose: 'presentation', story: storyVersion } };
   if (routine.ownerId !== uid || routine.archived) throw new Error('La rutina de la historia existe pero no pertenece a la cuenta o está archivada.');
   const story = buildDemoStory({ profile, routine, from, to, zone, createdAt: now });
 
