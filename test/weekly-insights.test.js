@@ -61,16 +61,16 @@ test('Displayed comparison uses deterministic session deltas and never trusts mo
   assert.match(text, /al menos dos mediciones/);
   assert.doesNotMatch(text, /sesión menos/);
 });
-test('One provider request asks for full interpretation and practical tracking focus with strict v2 schema', async () => {
-  const valid = { summary: 'Balance.', comparison: 'Comparación limitada.', insights: { training: 'Distribución.', nutrition: 'Cobertura.', weight: 'Mediciones.' },
-    trends: ['Observación.'], reviewPoints: ['Faltan registros.'], nextWeekFocus: ['Registrar la carga externa para comparar variantes.'] };
+test('One provider request asks for a direct coach reading with strict v3 schema', async () => {
+  const valid = { headline: 'Muy buena semana.', wins: ['Entrenaste 4 de 4 días.'], improvements: ['El sábado comiste más.'], focus: 'Planificá el sábado.',
+    detail: { training: 'Subiste carga.', nutrition: 'En objetivo 5 de 7 días.', weight: 'Bajó 0,4 kg.' } };
   let calls = 0;
   const result = await generateWeeklyAnalysis({ geminiModel: 'test', geminiApiKey: 'private' }, { evidence: {} }, async (_url, options) => {
     calls++; const request = JSON.parse(options.body);
-    assert.equal(request.generationConfig.maxOutputTokens, 3500);
-    assert.deepEqual(request.generationConfig.responseSchema.required, ['summary', 'comparison', 'insights', 'trends', 'reviewPoints', 'nextWeekFocus']);
+    assert.equal(request.generationConfig.maxOutputTokens, 2000);
+    assert.deepEqual(request.generationConfig.responseSchema.required, ['headline', 'wins', 'improvements', 'focus', 'detail']);
     assert.equal(request.contents[0].parts[0].text, weeklyAnalysisPrompt);
-    for (const requirement of ['no hagas cuentas', 'previousHasRecords=false', 'canCompareVolume=false', 'No diagnosticar', 'nextWeekFocus']) assert.ok(weeklyAnalysisPrompt.includes(requirement), requirement);
+    for (const requirement of ['No hagas cuentas', 'glance', 'no diagnostiques', 'focus', 'hasta hoy']) assert.ok(weeklyAnalysisPrompt.includes(requirement), requirement);
     return new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(valid) }] } }] }));
   });
   assert.equal(calls, 1); assert.deepEqual(result, valid);

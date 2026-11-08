@@ -3,7 +3,7 @@ import { providerError } from './food-providers.js';
 import { geminiHttpFailure } from './gemini-errors.js';
 import { weeklyEvidence, weeklyComparison } from './weekly-insights.js';
 
-const schemaVersion = 2;
+const schemaVersion = 3;
 const keys = ['calories', 'protein', 'fat', 'carbohydrates'];
 export function weeklyPayload(report, context = {}) {
   const evidence = weeklyEvidence(report);
@@ -24,7 +24,11 @@ export function weeklyPayload(report, context = {}) {
         weightKg: day.weight?.weightKg ?? null })),
     };
   }
-  return { schemaVersion, context: { currentGoal: goal, goalAppliesHistorically: false },
+  const glance = report.glance ? { headline: report.glance.headline, wins: report.glance.wins.map(item => item.text), improvements: report.glance.improvements.map(item => item.text),
+    training: (({ days, ...rest }) => rest)(report.glance.training), nutrition: (({ days, ...rest }) => rest)(report.glance.nutrition),
+    weight: (({ points, ...rest }) => rest)(report.glance.weight), routinePlanned: report.glance.routinePlanned } : null;
+  const targets = context.targets && typeof context.targets === 'object' ? Object.fromEntries(keys.map(key => [key, Number.isFinite(context.targets[key]) ? context.targets[key] : null])) : null;
+  return { schemaVersion, context: { currentGoal: goal, currentTargets: targets, goalAppliesHistorically: false }, glance,
     period: { from: report.period.from, through: report.period.through,
     previousFrom: report.period.previousFrom, previousThrough: report.period.previousThrough,
     elapsedDays: report.period.elapsedDays, isPartial: report.period.isPartial },
@@ -39,32 +43,28 @@ export function weeklyFingerprint(payload, model) {
 }
 export function validateWeeklyAnalysis(value) {
   const object = value && typeof value === 'object' && !Array.isArray(value);
-  const validText = text => typeof text === 'string' && text.trim().length > 0 && text.length <= 1200;
-  const validList = (key, max) => Array.isArray(value[key]) && value[key].length >= 1 && value[key].length <= max && value[key].every(validText);
-  if (!object || Object.keys(value).length !== 6 || !validText(value.summary) || !validText(value.comparison)
-    || !['trends', 'reviewPoints'].every(key => validList(key, 4)) || !validList('nextWeekFocus', 3)
-    || !value.insights || typeof value.insights !== 'object' || Array.isArray(value.insights)
-    || Object.keys(value.insights).length !== 3 || !['training', 'nutrition', 'weight'].every(key => validText(value.insights[key]))) {
+  const validText = (text, max = 400) => typeof text === 'string' && text.trim().length > 0 && text.length <= max;
+  const validList = (key, min, max) => Array.isArray(value[key]) && value[key].length >= min && value[key].length <= max && value[key].every(text => validText(text, 240));
+  if (!object || Object.keys(value).length !== 5 || !validText(value.headline, 200) || !validText(value.focus, 240)
+    || !validList('wins', 1, 3) || !validList('improvements', 1, 3)
+    || !value.detail || typeof value.detail !== 'object' || Array.isArray(value.detail)
+    || Object.keys(value.detail).length !== 3 || !['training', 'nutrition', 'weight'].every(key => validText(value.detail[key], 500))) {
     throw providerError(502, 'INVALID_WEEKLY_ANALYSIS', 'No pudimos obtener un análisis con formato válido. Intentá más tarde.');
   }
   const spanish = text => text.trim().replace(/\bfat\b/gi, 'grasas').replace(/\bcarbohydrates\b/gi, 'carbohidratos').replace(/\bprotein\b/gi, 'proteínas');
-  return { summary: spanish(value.summary), comparison: spanish(value.comparison),
-    insights: Object.fromEntries(['training', 'nutrition', 'weight'].map(key => [key, spanish(value.insights[key])])),
-    trends: value.trends.map(spanish), reviewPoints: value.reviewPoints.map(spanish), nextWeekFocus: value.nextWeekFocus.map(spanish) };
+  return { headline: spanish(value.headline), wins: value.wins.map(spanish), improvements: value.improvements.map(spanish), focus: spanish(value.focus),
+    detail: Object.fromEntries(['training', 'nutrition', 'weight'].map(key => [key, spanish(value.detail[key])])) };
 }
-export const weeklyAnalysisPrompt = `Sos el asistente de lectura de registros de Formance. Escribí en español rioplatense claro, cercano y específico, sin alarmismo. Ayudá a entender la semana y qué revisar en el próximo registro; no te limites a repetir una lista de totales.
-Las métricas, diferencias y cobertura ya están calculadas por el backend: no hagas cuentas, porcentajes, cálculos nuevos ni inventes datos. Usá exclusivamente valores presentes. Integra entrenamiento, alimentación y peso como observaciones simultáneas, nunca como relaciones causales. Usa context.currentGoal solo para dar foco a la lectura actual, sin asumir que era la meta en semanas anteriores; null significa que no se conoce el objetivo. Objetivos: maintain=mantenimiento de peso, muscle=ganar masa muscular, recomposition=mejorar composición corporal, fat_loss=reducir grasa corporal.
-Contenido obligatorio:
-- summary: balance de la semana en una frase breve (máximo 180 caracteres), qué patrón merece atención y relación informativa con el objetivo actual si existe. No afirmar progreso físico demostrado por dos semanas de registros.
-- comparison: 2–4 frases comparando el mismo tramo de la semana anterior, con diferencias provistas en sesiones/series, alimentación y peso cuando haya datos comparables. Explicá la cobertura y si la semana está en curso. Si coverage.previousHasRecords=false no inventes una comparación ni interpretes los ceros como inactividad. No garantices que la semana anterior siempre tenga registros.
-- insights.training: una frase directa (máximo 220 caracteres) sobre distribución de días con sesiones, series realizadas y variantes compartidas con cargas máximas registradas comparables. No confundir una carga máxima registrada distinta con ganancia de fuerza ni comparar volumen si evidence.training.canCompareVolume=false o si cambiaron variantes. Contadores de series de sesiones abiertas/interrumpidas también incluyen trabajo registrado; no equivalen a sesiones completadas.
-- insights.nutrition: una frase directa (máximo 220 caracteres) sobre promedio REGISTRADO de calorías y macros, cobertura y variación entre días registrados usando evidence.nutrition. Diferencias en días o datos incompletos pueden explicar diferencias de promedio. Valores mínimos/máximos son de lo registrado, no de todo lo consumido. completeDays significa que los alimentos registrados tienen ese nutriente, no que se haya anotado todo lo consumido en el día. No deducir déficit/superávit energético ni cumplimiento nutricional. Priorizar patrones útiles, no repetir cada nutriente.
-- insights.weight: una frase directa (máximo 220 caracteres) sobre mediciones, promedio y variación registrados. Comparar promedios solo si evidence.weight.canCompareAverages=true. Si no, aclarar la insuficiencia. No convertir variación de peso en cambio de grasa/músculo, composición corporal o resultado clínico; dos semanas no prueban tendencia sostenida.
-- trends: 1–4 observaciones breves y concretas que conecten hechos ya calculados. Evitá duplicar el resumen o las tres lecturas por área; no fuerces relaciones si faltan datos.
-- reviewPoints: 1–3 puntos breves (máximo 180 caracteres cada uno) que prioricen lo que conviene corregir o revisar, respaldados por registros concretos. Distinguir sesiones interrumpidas y datos incompletos de la ausencia de información; no convertir una variación o una falta de datos en un error del usuario. Explicar limitaciones ESPECÍFICAS de esta semana y su comparación (cobertura, carga desconocida, fechas inferidas, estimaciones de foto, metas históricas ausentes). No llenar el resultado de avisos genéricos repetidos.
-- nextWeekFocus: una sugerencia de seguimiento práctica y priorizada, de máximo 180 caracteres, cada una vinculada a una observación real. Solo acciones de registro/revisión: completar repeticiones y cargas para comparar variantes, revisar porciones estimadas, mantener condiciones de medición comparables o revisar la distribución semanal ya elegida. Explicar para qué sirve cada acción. Si los registros están completos, sugerir conservar el criterio de registro y revisar si el patrón se repite. No inventar carencias ni sugerir más entrenamiento/comida por un día vacío.
-No diagnosticar, prescribir, generar tratamientos, dietas ni rutinas; no recomendar medicamentos/suplementos ni cambios numéricos en ingesta o cargas. No afirmar adherencia histórica, causalidad ni que un día sin registros significa que no se comió o entrenó. Distinguir null (desconocido) y 0. No hacer recomendaciones clínicas. Describir lo disponible sin juzgar al usuario. Cuando falten datos, decirlo en el área correspondiente y proponer cómo mejorar el registro.
-Respondé SOLO JSON con exactamente seis propiedades: summary (string), comparison (string), insights (objeto con exactamente training, nutrition, weight como strings), trends (array de 1–4 strings), reviewPoints (array de 1–4 strings), nextWeekFocus (array de 1–3 strings). Cada texto máximo 1200 caracteres. Resultado total breve, idealmente 140–220 palabras; sin introducciones ni números repetidos. No mencionar IA, inteligencia artificial, Gemini ni el modelo en los textos dirigidos al usuario.`;
+export const weeklyAnalysisPrompt = `Sos el coach de lectura de Formance. Hablale al usuario de vos, en español rioplatense, directo y concreto, como alguien que lo acompaña: qué está pasando, qué hizo bien y dónde puede mejorar. Nada de introducciones, rodeos ni avisos genéricos.
+Fuente de verdad: glance (lectura ya calculada contra su objetivo actual, su rutina y la semana anterior) y el resto del JSON. No hagas cuentas nuevas ni inventes datos; usá solo valores presentes, redondeados como aparecen. context.currentGoal: maintain=mantener peso, muscle=ganar masa muscular, recomposition=mejorar composición corporal, fat_loss=bajar grasa. Los objetivos (context.currentTargets) son los actuales.
+Contenido:
+- headline: una frase (máx. 140 caracteres) que resuma la semana con lo más importante, positivo o negativo.
+- wins: 1–3 logros concretos con números (días entrenados, cargas que subieron, días en objetivo, proteína, peso alineado al objetivo). Si no hay logros claros, destacá lo que sí registró.
+- improvements: 1–3 puntos de mejora concretos con números (entrenamientos salteados, sesiones interrumpidas, picos de calorías o fines de semana, proteína corta, pocos días registrados, peso en dirección opuesta al objetivo). Si la semana fue muy buena, proponé el siguiente desafío.
+- focus: una sola acción práctica y realista para la próxima semana, vinculada a la mejora principal (máx. 160 caracteres).
+- detail.training, detail.nutrition, detail.weight: 1–2 frases cada uno (máx. 260 caracteres) que expliquen el porqué con datos, incluida la comparación con la semana anterior cuando exista.
+Límites: no diagnostiques ni prescribas dietas, medicamentos ni suplementos; no indiques cifras nuevas de calorías o cargas fuera de sus objetivos actuales. No atribuyas cambios de peso a grasa o músculo. Un día sin registros no prueba que no haya comido o entrenado: decilo como falta de registro. Si la semana está en curso (period.isPartial), hablá de "hasta hoy".
+Respondé SOLO JSON con exactamente: headline (string), wins (array 1–3 strings), improvements (array 1–3 strings), focus (string), detail (objeto con training, nutrition, weight). Total breve: 90–150 palabras. No menciones IA, modelos ni Gemini.`;
 
 export async function generateWeeklyAnalysis(config, payload, fetcher = fetch) {
   let response;
@@ -73,11 +73,11 @@ export async function generateWeeklyAnalysis(config, payload, fetcher = fetch) {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': config.geminiApiKey },
       signal: AbortSignal.timeout(45000),
       body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: weeklyAnalysisPrompt }, { text: JSON.stringify(payload) }] }],
-        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 3500,
-          responseSchema: { type: 'OBJECT', properties: { summary: { type: 'STRING' }, comparison: { type: 'STRING' },
-            insights: { type: 'OBJECT', properties: { training: { type: 'STRING' }, nutrition: { type: 'STRING' }, weight: { type: 'STRING' } }, required: ['training', 'nutrition', 'weight'] },
-            trends: { type: 'ARRAY', items: { type: 'STRING' } }, reviewPoints: { type: 'ARRAY', items: { type: 'STRING' } }, nextWeekFocus: { type: 'ARRAY', items: { type: 'STRING' } } },
-            required: ['summary', 'comparison', 'insights', 'trends', 'reviewPoints', 'nextWeekFocus'] } } }),
+        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 2000,
+          responseSchema: { type: 'OBJECT', properties: { headline: { type: 'STRING' }, wins: { type: 'ARRAY', items: { type: 'STRING' } },
+            improvements: { type: 'ARRAY', items: { type: 'STRING' } }, focus: { type: 'STRING' },
+            detail: { type: 'OBJECT', properties: { training: { type: 'STRING' }, nutrition: { type: 'STRING' }, weight: { type: 'STRING' } }, required: ['training', 'nutrition', 'weight'] } },
+            required: ['headline', 'wins', 'improvements', 'focus', 'detail'] } } }),
     });
   } catch (error) {
     const timeout = ['TimeoutError', 'AbortError'].includes(error?.name);
@@ -126,7 +126,7 @@ export async function analyzeWeeklyReport({ db, uid, config, report, context, fe
       timeZone: report.period.timeZone, model: config.geminiModel, schemaVersion, createdAt: new Date(now).toISOString() });
     return null;
   });
-  if (cached) return { analysis: { ...validateWeeklyAnalysis(cached.analysis), comparison: weeklyComparison(payload) }, fingerprint, cached: true, generatedAt: cached.generatedAt };
+  if (cached) return { analysis: { ...validateWeeklyAnalysis((({ comparison, ...rest }) => rest)(cached.analysis)), comparison: weeklyComparison(payload) }, fingerprint, cached: true, generatedAt: cached.generatedAt };
   try {
     const analysis = { ...await generateWeeklyAnalysis(config, payload, fetcher), comparison: weeklyComparison(payload) };
     const generatedAt = new Date().toISOString();

@@ -6,9 +6,9 @@ import { fixture } from '../test-support/firestore.js';
 import { weeklyPayload, weeklyFingerprint, validateWeeklyAnalysis } from '../src/services/weekly-analysis.js';
 import { buildWeeklyReport, weeklyRange } from '../src/services/reports.js';
 
-const analysis = { summary: 'Según los registros disponibles, hay datos parciales.', comparison: 'La semana anterior no tiene registros comparables.',
-  insights: { training: 'Faltan sesiones registradas.', nutrition: 'Hay un día con alimentos registrados.', weight: 'Faltan mediciones.' },
-  trends: ['Hay registros de alimentación.'], reviewPoints: ['No existen datos suficientes para determinar adherencia.'], nextWeekFocus: ['Revisá las porciones estimadas antes de guardar.'] };
+const analysis = { headline: 'Semana con pocos registros: hay un día con comidas.', wins: ['Registraste tus comidas de un día.'],
+  improvements: ['Faltan sesiones y mediciones para leer la semana completa.'], focus: 'Registrá tus entrenamientos esta semana.',
+  detail: { training: 'Faltan sesiones registradas.', nutrition: 'Hay un día con alimentos registrados.', weight: 'Faltan mediciones.' } };
 const response = (value = analysis) => new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: typeof value === 'string' ? value : JSON.stringify(value) }] } }] }), { status: 200 });
 const food = calories => ({ localDate: '2026-01-05', timeZone: 'UTC', note: 'PERSONAL_SECRET', archived: false,
   items: [{ itemId: 'PRIVATE_ITEM', name: 'PRIVATE_NAME', source: 'manual', totals: { calories, protein: 10, fat: 5, carbohydrates: 20 } }] });
@@ -39,13 +39,13 @@ test('Weekly analysis requires verified identity, validates week and rejects arb
     assert.equal((await h.post('empty')).status, 400); assert.equal(h.calls(), 0);
     const result = await h.post(); assert.equal(result.status, 200);
     const returned = (await result.json()).analysis;
-    assert.deepEqual({ ...returned, comparison: analysis.comparison }, analysis);
+    const { comparison: _comparison, ...rest } = returned; assert.deepEqual(rest, analysis);
     assert.match(returned.comparison, /período anterior no tiene registros/);
     const sent = JSON.stringify(JSON.parse(h.requests[0][1].body));
     for (const secret of ['PERSONAL_SECRET', 'PRIVATE_ITEM', 'PRIVATE_NAME', 'PRIVATE_PROFILE', 'PRIVATE_EMAIL', 'private-id', 'alice', 'bob', '9000']) assert.ok(!sent.includes(secret), secret);
     const payload = JSON.parse(JSON.parse(h.requests[0][1].body).contents[0].parts[1].text);
     assert.equal(payload.context.currentGoal, 'recomposition'); assert.equal(payload.context.goalAppliesHistorically, false);
-    assert.equal(payload.schemaVersion, 2); assert.equal(payload.evidence.coverage.previousHasRecords, false);
+    assert.equal(payload.schemaVersion, 3); assert.ok(payload.glance.headline.title); assert.equal(payload.evidence.coverage.previousHasRecords, false);
     assert.equal(h.requests[0][1].signal instanceof AbortSignal, true);
     assert.equal(result.headers.get('cache-control'), 'no-store');
     assert.equal((await (await h.weekly()).json()).current.food.nutrients.calories.value, 200);
@@ -94,7 +94,7 @@ test('Provider invalid JSON, empty response, wrong format, HTTP errors, network 
   const cases = [
     [() => response('{invalid'), 502, 'INVALID_WEEKLY_ANALYSIS'],
     [() => response(''), 502, 'INVALID_WEEKLY_ANALYSIS'],
-    [() => response({ summary: 'bad', trends: 'wrong', reviewPoints: [] }), 502, 'INVALID_WEEKLY_ANALYSIS'],
+    [() => response({ headline: 'bad', wins: 'wrong', improvements: [] }), 502, 'INVALID_WEEKLY_ANALYSIS'],
     [() => new Response('{}'), 502, 'INVALID_WEEKLY_ANALYSIS'],
     [() => new Response('{}', { status: 403 }), 503, 'GEMINI_ACCESS_DENIED'],
     [() => new Response('{}', { status: 429 }), 429, 'PROVIDER_LIMIT'],
@@ -146,7 +146,7 @@ test('Hash ignores identity and notes but changes with food, training, weight or
   assert.notEqual(hash(original), weeklyFingerprint({ ...original, schemaVersion: 1 }, 'test-model'));
   assert.notEqual(hash(original), hash(weeklyPayload(buildWeeklyReport(range, [], [food(200)]), { goal: 'muscle' })));
   assert.equal(weeklyPayload(buildWeeklyReport(range, [], [food(200)]), { goal: 'PERSONAL_SECRET' }).context.currentGoal, null);
-  for (const invalid of [null, [], {}, { ...analysis, extra: true }, { ...analysis, trends: [] }, { ...analysis, summary: ' ' }, { ...analysis, reviewPoints: [5] }]) assert.throws(() => validateWeeklyAnalysis(invalid));
-  for (const invalid of [{ ...analysis, comparison: '' }, { ...analysis, insights: { ...analysis.insights, extra: 'x' } }, { ...analysis, insights: { training: 'only' } },
-    { ...analysis, nextWeekFocus: [] }, { ...analysis, nextWeekFocus: Array(4).fill('too many') }, { ...analysis, summary: 'x'.repeat(1201) }]) assert.throws(() => validateWeeklyAnalysis(invalid));
+  for (const invalid of [null, [], {}, { ...analysis, extra: true }, { ...analysis, wins: [] }, { ...analysis, headline: ' ' }, { ...analysis, improvements: [5] }]) assert.throws(() => validateWeeklyAnalysis(invalid));
+  for (const invalid of [{ ...analysis, focus: '' }, { ...analysis, detail: { ...analysis.detail, extra: 'x' } }, { ...analysis, detail: { training: 'only' } },
+    { ...analysis, improvements: Array(4).fill('too many') }, { ...analysis, headline: 'x'.repeat(201) }]) assert.throws(() => validateWeeklyAnalysis(invalid));
 });
