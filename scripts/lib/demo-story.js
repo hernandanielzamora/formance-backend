@@ -194,6 +194,8 @@ export function buildStoryMeals({ targets, from, to, zone, createdAt }) {
     if (plan.birthday) dayMeals[3] = { mealType: 'dinner', recipe: menus.treatDinner[2] };
     // Algunos días normales sin merienda, para que no todo sea perfecto.
     if (!plan.treat && noise(`snack:${day}`, 1) > .55) dayMeals = dayMeals.filter(item => item.mealType !== 'snack');
+    // Día de la presentación: quedan merienda y cena para registrar en vivo.
+    if (day === '2026-11-11') dayMeals = dayMeals.filter(item => ['breakfast', 'lunch'].includes(item.mealType));
     const draft = dayMeals.map(({ mealType, recipe: chosen }) => ({ mealType, name: chosen.name, items: chosen.items.map(([key, grams]) => ({ key, grams })) }));
     const fitted = fitDay(draft, targets.calories * plan.kcal, targets.protein * plan.protein);
     for (const meal of fitted) {

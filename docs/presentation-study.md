@@ -94,3 +94,34 @@ reales de consumo ni respuestas atribuidas a USDA o Gemini. El origen simulado q
 `demoData`, junto a `presentationRevision: 2` y `nutritionValues: illustrative-estimates`.
 No se consume IA. Se comprobaron 30 días con cuatro comidas, 28 notas de platos distintas,
 idempotencia y conservación exacta de sesiones, pesos y rutina frente al respaldo.
+
+## Historia de recomposición (v2, reemplaza la demo anterior)
+
+Del **1 de octubre al 11 de noviembre de 2026**, pensada para mostrar reportes y lectura semanal.
+Objetivo del perfil: **recomposición** (las metas se recalculan con la fórmula del onboarding).
+Rutina activa: copia privada de *Superior / inferior · 4 días* (lunes, martes, jueves y viernes).
+
+| Semana | Qué muestra |
+| --- | --- |
+| 28/9 (desde el 1/10) | Arranque: primeras sesiones con cargas cómodas. |
+| 5/10 y 12/10 | Rutina casi completa, cargas en subida; el 12/10 falta el viernes y una serie sin carga. |
+| **19/10** | **Semana floja (viaje):** 1 sesión completa, 1 interrumpida, 2 salteadas, comidas solo 4 días, peso +0,6 kg. |
+| 26/10 | Regreso: 4/4 y vuelve la progresión. |
+| **2/11** | **La mejor semana:** 4/4, récords de carga, calorías en objetivo 5 de 7 días, proteína en objetivo, peso −0,4 kg. Sábado de cumpleaños (+33 % kcal). |
+| 9/11 | En curso: lunes y martes entrenados; el 11/11 tiene desayuno y almuerzo (merienda y cena para cargar en vivo). |
+
+Los fines de semana tienen más calorías y menos proteína para que la lectura detecte el patrón.
+
+```powershell
+# 1) Simulación: muestra qué se archiva, qué se agrega y qué registros reales se conservan.
+npm.cmd run seed:story -- --uid UID --email CORREO
+# 2) Aplicar (idempotente: repetirlo no duplica nada).
+npm.cmd run seed:story -- --uid UID --email CORREO --apply
+```
+
+Antes de escribir se respaldan todos los registros de demos anteriores en
+`users/{uid}/demoArchive/` y se borran de las colecciones activas. Los registros sin
+`demoData` (reales) nunca se modifican: si un día ya tiene un registro real del mismo
+tipo, la historia no carga encima. El manifiesto `studyImports/story-v2` guarda el
+objetivo, las metas y la rutina activa originales. Los registros futuros (hasta el 11/11)
+quedan guardados y aparecen al llegar cada fecha.
