@@ -24,6 +24,7 @@ test('Lectura: semana completa con récord, proteína y peso alineados, pico de 
   assert.equal(g.headline.tone, 'good');
   assert.equal(g.training.completedPlanned, 4); assert.equal(g.training.planned, 4);
   assert.deepEqual(g.training.records.map(item => [item.name, item.deltaKg]), [['Sentadilla con barra', 5]]);
+  assert.match(g.headline.text, /^Cumpliste tu rutina, subiste carga en Sentadilla con barra y comiste en objetivo/);
   assert.match(g.wins[0].text, /4 de 4 días planificados y subiste carga en Sentadilla con barra \(85 kg, \+5 kg\)/);
   assert.equal(g.nutrition.onTargetDays, 5); assert.equal(g.nutrition.proteinDays, 7);
   assert.equal(g.weight.deltaKg, -0.4); assert.equal(g.weight.aligned, true);

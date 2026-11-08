@@ -97,23 +97,25 @@ export function weeklyGlance(report, { goal: rawGoal = null, targets = null, rou
   else if (consistent) wins.push({ area: 'training', text: `${consistency}.` });
   else if (best) wins.push({ area: 'training', text: `${progress.charAt(0).toUpperCase()}${progress.slice(1)}.` });
   if (t.missed.length) improvements.push({ area: 'training', text: `${t.missed.length === 1 ? 'Quedó' : 'Quedaron'} ${t.missed.length} ${t.missed.length === 1 ? 'entrenamiento' : 'entrenamientos'} sin hacer (${t.missed.map(date => dayNames[weekday(date)]).join(', ')}).`,
-    action: 'Si esos días se te complican, mové los workouts a otro día de la semana.', href: '/app/entrenamiento/calendario' });
-  if (t.abandoned) improvements.push({ area: 'training', text: `${t.abandoned} ${t.abandoned === 1 ? 'sesión quedó interrumpida' : 'sesiones quedaron interrumpidas'}.`, action: 'Revisá qué pasó y retomá con las mismas cargas.', href: '/app/entrenamiento/calendario' });
+    action: 'Si esos días se te complican, mové los workouts a otro día de la semana.', href: '/app/entrenamiento/calendario', short: t.missed.length === 1 ? 'el entrenamiento que quedó sin hacer' : `los ${t.missed.length} entrenamientos que quedaron sin hacer` });
+  if (t.abandoned) improvements.push({ area: 'training', text: `${t.abandoned} ${t.abandoned === 1 ? 'sesión quedó interrumpida' : 'sesiones quedaron interrumpidas'}.`, action: 'Revisá qué pasó y retomá con las mismas cargas.', href: '/app/entrenamiento/calendario', short: 'la sesión interrumpida' });
   // Alimentación
-  if (n.daysLogged && n.daysLogged < n.elapsed - 1) improvements.push({ area: 'nutrition', text: `Registraste comidas ${n.daysLogged} de ${n.elapsed} días; así el promedio es menos confiable.`, action: 'Anotá aunque sea lo principal de cada día.', href: '/app/alimentacion' });
+  if (n.daysLogged && n.daysLogged < n.elapsed - 1) improvements.push({ area: 'nutrition', text: `Registraste comidas ${n.daysLogged} de ${n.elapsed} días; así el promedio es menos confiable.`, action: 'Anotá aunque sea lo principal de cada día.', href: '/app/alimentacion', short: 'el registro de comidas' });
   if (n.kcalTarget && n.daysLogged >= 3 && n.onTargetDays / n.daysLogged >= .6) wins.push({ area: 'nutrition', text: `Calorías dentro de tu objetivo ${n.onTargetDays} de ${n.daysLogged} días.` });
   if (n.proteinTarget && n.daysLogged >= 3 && n.proteinDays / n.daysLogged >= .7) wins.push({ area: 'nutrition', text: `Llegaste a tu proteína ${n.proteinDays} de ${n.daysLogged} días (${fmt(n.avgProtein)} g en promedio).` });
   if (n.weekendDelta !== null && n.weekendDelta >= .15) improvements.push({ area: 'nutrition', text: `El fin de semana comiste ${fmt(n.weekendDelta * 100)} % más que entre semana${n.peak && weekday(n.peak.date) >= 5 ? ` (el ${dayNames[weekday(n.peak.date)]}: ${fmt(n.peak.kcal)} kcal)` : ''}.`,
-    action: 'Planificá una comida del fin de semana con anticipación.', href: '/app/alimentacion' });
-  else if (n.peak) improvements.push({ area: 'nutrition', text: `El ${dayNames[weekday(n.peak.date)]} registraste ${fmt(n.peak.kcal)} kcal, ${fmt((n.peak.ratio - 1) * 100)} % sobre tu objetivo.`, action: 'Revisá qué comidas sumaron más ese día.', href: '/app/alimentacion' });
-  if (n.proteinTarget && n.daysLogged >= 3 && n.proteinDays / n.daysLogged < .5) improvements.push({ area: 'nutrition', text: `La proteína quedó corta: ${fmt(n.avgProtein)} g de ${fmt(n.proteinTarget)} g en promedio.`, action: 'Sumá una fuente de proteína en desayuno o merienda.', href: '/app/alimentacion' });
+    action: 'Planificá una comida del fin de semana con anticipación.', href: '/app/alimentacion', short: 'las calorías del fin de semana' });
+  else if (n.peak) improvements.push({ area: 'nutrition', text: `El ${dayNames[weekday(n.peak.date)]} registraste ${fmt(n.peak.kcal)} kcal, ${fmt((n.peak.ratio - 1) * 100)} % sobre tu objetivo.`, action: 'Revisá qué comidas sumaron más ese día.', href: '/app/alimentacion', short: `las calorías del ${dayNames[weekday(n.peak.date)]}` });
+  if (n.proteinTarget && n.daysLogged >= 3 && n.proteinDays / n.daysLogged < .5) improvements.push({ area: 'nutrition', text: `La proteína quedó corta: ${fmt(n.avgProtein)} g de ${fmt(n.proteinTarget)} g en promedio.`, action: 'Sumá una fuente de proteína en desayuno o merienda.', href: '/app/alimentacion', short: 'la proteína' });
   // Peso
   if (w.deltaKg !== null && w.aligned) wins.push({ area: 'weight', text: w.deltaKg === 0 ? 'Tu peso promedio se mantuvo estable.' : `Tu peso promedio ${w.deltaKg < 0 ? 'bajó' : 'subió'} ${fmt(Math.abs(w.deltaKg), 1)} kg, en línea con tu objetivo.` });
-  if (w.deltaKg !== null && w.aligned === false && Math.abs(w.deltaKg) >= .3) improvements.push({ area: 'weight', text: `Tu peso promedio ${w.deltaKg < 0 ? 'bajó' : 'subió'} ${fmt(Math.abs(w.deltaKg), 1)} kg respecto de la semana anterior.`, action: 'Mirá si coincide con más calorías o con días sin registrar.', href: '/app/peso' });
-  if (w.count < 2 && !partial) improvements.push({ area: 'weight', text: w.count ? 'Solo hay una medición de peso esta semana.' : 'No registraste tu peso esta semana.', action: 'Pesate 3 veces por semana, en ayunas, para ver la tendencia.', href: '/app/peso' });
+  if (w.deltaKg !== null && w.aligned === false && Math.abs(w.deltaKg) >= .3) improvements.push({ area: 'weight', text: `Tu peso promedio ${w.deltaKg < 0 ? 'bajó' : 'subió'} ${fmt(Math.abs(w.deltaKg), 1)} kg respecto de la semana anterior.`, action: 'Mirá si coincide con más calorías o con días sin registrar.', href: '/app/peso', short: w.deltaKg < 0 ? 'la baja de peso' : 'la subida de peso' });
+  if (w.count < 2 && !partial) improvements.push({ area: 'weight', text: w.count ? 'Solo hay una medición de peso esta semana.' : 'No registraste tu peso esta semana.', action: 'Pesate 3 veces por semana, en ayunas, para ver la tendencia.', href: '/app/peso', short: 'las mediciones de peso' });
   // Calidad de datos, solo si no hay nada más importante para mejorar.
-  if (!improvements.length && report.current.training.setsWithoutRecordedLoad) improvements.push({ area: 'training', text: `${report.current.training.setsWithoutRecordedLoad} series no tienen la carga anotada.`, action: 'Completalas para comparar tu progreso.', href: '/app/entrenamiento/calendario' });
+  if (!improvements.length && report.current.training.setsWithoutRecordedLoad) improvements.push({ area: 'training', text: `${report.current.training.setsWithoutRecordedLoad} series no tienen la carga anotada.`, action: 'Completalas para comparar tu progreso.', href: '/app/entrenamiento/calendario', short: 'las cargas sin anotar' });
 
+  // Una entrada por área antes de repetir: la lectura cubre entrenamiento, comida y peso.
+  const spread = list => { const order = []; const pending = [...list]; while (pending.length) for (const area of ['training', 'nutrition', 'weight']) { const index = pending.findIndex(item => item.area === area); if (index >= 0) order.push(...pending.splice(index, 1)); } return order; };
   const statuses = [t.status, n.status, w.status];
   const hasRecords = statuses.some(status => status !== 'empty');
   const good = statuses.filter(status => status === 'good').length; const attention = statuses.filter(status => status === 'attention').length;
@@ -121,12 +123,18 @@ export function weeklyGlance(report, { goal: rawGoal = null, targets = null, rou
   const title = !hasRecords ? 'Todavía no hay registros esta semana'
     : partial ? (tone === 'attention' ? 'Semana para retomar el ritmo' : tone === 'good' ? 'Vas muy bien esta semana' : 'Vas bien, con algo para ajustar')
     : tone === 'good' ? (improvements.length ? 'Muy buena semana' : 'Semana redonda') : tone === 'attention' ? 'Semana para retomar el ritmo' : 'Buena semana, con algo para ajustar';
+  // Titular en una línea: lo positivo en pocas palabras y, si hay, qué ajustar.
+  const positives = [];
+  if (consistent) positives.push(t.planned ? 'cumpliste tu rutina' : `entrenaste ${t.completed} veces`);
+  if (best) positives.push(t.records.length === 1 ? `subiste carga en ${best.name}` : 'subiste cargas');
+  if (n.status === 'good') positives.push('comiste en objetivo la mayoría de los días');
+  if (w.deltaKg && w.aligned) positives.push(`${w.deltaKg < 0 ? 'bajaste' : 'subiste'} ${fmt(Math.abs(w.deltaKg), 1)} kg`);
+  const list = items => items.length > 1 ? `${items.slice(0, -1).join(', ')} y ${items.at(-1)}` : items[0];
+  const firstImprovement = spread(improvements)[0];
   const text = !hasRecords ? 'Registrá un entrenamiento, una comida o tu peso para ver tu lectura semanal.'
-    : [wins[0]?.text, improvements[0] ? `A mejorar: ${improvements[0].text.charAt(0).toLowerCase()}${improvements[0].text.slice(1)}` : null].filter(Boolean).join(' ');
-  const focus = !hasRecords ? null : improvements[0] ? { area: improvements[0].area, text: improvements[0].action, href: improvements[0].href }
+    : [positives.length ? `${list(positives.slice(0, 3)).replace(/^./, c => c.toUpperCase())}.` : null, firstImprovement ? (positives.length ? `Para ajustar: ${firstImprovement.short}.` : `Lo principal: ${list(spread(improvements).slice(0, 2).map(item => item.short))}.`) : null].filter(Boolean).join(' ');
+  const focus = !hasRecords ? null : firstImprovement ? { area: firstImprovement.area, text: firstImprovement.action, href: firstImprovement.href }
     : hasRecords ? { area: 'training', text: 'Repetí esta semana: mismo plan y, si podés, un poco más de carga.', href: '/app/entrenamiento/calendario' } : null;
-  // Una entrada por área antes de repetir: la lectura cubre entrenamiento, comida y peso.
-  const spread = list => { const order = []; const pending = [...list]; while (pending.length) for (const area of ['training', 'nutrition', 'weight']) { const index = pending.findIndex(item => item.area === area); if (index >= 0) order.push(...pending.splice(index, 1)); } return order; };
   const topWins = hasRecords ? spread(wins).slice(0, 3) : []; const topImprovements = hasRecords ? spread(improvements).slice(0, 3) : [];
   return { version: 1, goal, targets: targets ? { calories: targets.calories ?? null, protein: targets.protein ?? null } : null, routinePlanned: Boolean(planned),
     headline: { tone, title, text }, training: t, nutrition: n, weight: w, wins: topWins, improvements: topImprovements, focus };
