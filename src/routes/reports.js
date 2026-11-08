@@ -7,6 +7,7 @@ import { canRead } from '../services/training.js';
 import { analyzeWeeklyReport } from '../services/weekly-analysis.js';
 import { weeklyGlance } from '../services/weekly-glance.js';
 import { weeklyTrend, exerciseProgress, userNotes, trendReadFrom } from '../services/weekly-trend.js';
+import { monthRange, buildMonthlyReport } from '../services/monthly-report.js';
 export const reportRoutes = Router();
 reportRoutes.use(requireAuth, (req, res, next) => {
   res.set('Cache-Control', 'no-store');
@@ -39,4 +40,19 @@ reportRoutes.post('/weekly-analysis', async (req, res) => {
   const { context, extras, ...report } = await loadReport(req, req.body, { withTrend: true });
   res.json(await analyzeWeeklyReport({ db: req.app.locals.firebase.db, uid: req.identity.uid,
     config: req.app.locals.config, report, context, extras, fetcher: req.app.locals.weeklyAnalysisFetch || fetch }));
+});
+reportRoutes.get('/monthly', async (req, res) => {
+  const range = monthRange(req.query); const user = req.app.locals.firebase.db.collection('users').doc(req.identity.uid);
+  async function read(collection, max) {
+    const snapshot = await user.collection(collection).where('localDate', '>=', range.readFrom).where('localDate', '<=', range.through).limit(max + 1).get();
+    if (snapshot.docs.length > max) { const error = new Error('Hay demasiados registros para este mes. No se muestran totales parciales.'); error.status = 400; throw error; }
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+  }
+  const [sessions, meals, weight, profile, settings] = await Promise.all([read('trainingSessions', 4000), read('foodLogs', 10000), readWeights(user, range.readFrom, range.through, range.timeZone),
+    user.get(), user.collection('settings').doc('training').get()]);
+  const activeId = settings.exists ? settings.data().activeRoutineId : null;
+  const routineDoc = typeof activeId === 'string' && /^[a-zA-Z0-9-]{1,80}$/.test(activeId) ? await req.app.locals.firebase.db.collection('routines').doc(activeId).get() : null;
+  const routine = routineDoc?.exists && canRead(req.identity, routineDoc.data()) ? routineDoc.data() : null;
+  const context = { goal: profile.exists ? profile.data().goal ?? null : null, targets: profile.exists ? profile.data().targets ?? null : null, routine };
+  res.json(buildMonthlyReport({ range, sessions, meals, weights: weight.measurements, context }));
 });

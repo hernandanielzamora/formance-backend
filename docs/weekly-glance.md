@@ -38,3 +38,12 @@ La respuesta pide `headline`, `wins` (1–3), `improvements` (1–3), `focus`, `
 por área. El modelo no calcula ni inventa valores y relaciona señales con “coincide con”.
 Solo este endpoint lee 5 semanas; el reporte normal sigue leyendo 2. Los análisis guardados
 con versiones anteriores no se reutilizan porque la huella incluye la versión del esquema.
+
+## Resumen mensual
+
+`GET /api/reports/monthly?month=YYYY-MM&timeZone=...` (`src/services/monthly-report.js`), sin IA:
+entrenamientos hechos frente a los días planificados del mes, sesiones interrumpidas, series,
+evolución de la carga de hasta 5 ejercicios (primera vs última sesión del mes), días con comidas,
+calorías y proteína frente al objetivo actual, diferencia fin de semana / entre semana, primera
+y última medición de peso, y cada semana que toca el mes con el tono de su lectura semanal.
+No admite meses futuros; el mes en curso se calcula hasta hoy.
