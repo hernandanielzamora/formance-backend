@@ -7,7 +7,7 @@ import { weeklyPayload, weeklyFingerprint, validateWeeklyAnalysis } from '../src
 import { buildWeeklyReport, weeklyRange } from '../src/services/reports.js';
 
 const analysis = { headline: 'Semana con pocos registros: hay un día con comidas.', wins: ['Registraste tus comidas de un día.'],
-  improvements: ['Faltan sesiones y mediciones para leer la semana completa.'], focus: 'Registrá tus entrenamientos esta semana.',
+  improvements: ['Faltan sesiones y mediciones para leer la semana completa.'], focus: 'Registrá tus entrenamientos esta semana.', trend: 'Es la primera semana con registros del mes.',
   detail: { training: 'Faltan sesiones registradas.', nutrition: 'Hay un día con alimentos registrados.', weight: 'Faltan mediciones.' } };
 const response = (value = analysis) => new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: typeof value === 'string' ? value : JSON.stringify(value) }] } }] }), { status: 200 });
 const food = calories => ({ localDate: '2026-01-05', timeZone: 'UTC', note: 'PERSONAL_SECRET', archived: false,
@@ -42,10 +42,10 @@ test('Weekly analysis requires verified identity, validates week and rejects arb
     const { comparison: _comparison, ...rest } = returned; assert.deepEqual(rest, analysis);
     assert.match(returned.comparison, /período anterior no tiene registros/);
     const sent = JSON.stringify(JSON.parse(h.requests[0][1].body));
-    for (const secret of ['PERSONAL_SECRET', 'PRIVATE_ITEM', 'PRIVATE_NAME', 'PRIVATE_PROFILE', 'PRIVATE_EMAIL', 'private-id', 'alice', 'bob', '9000']) assert.ok(!sent.includes(secret), secret);
+    for (const secret of ['PRIVATE_ITEM', 'PRIVATE_NAME', 'PRIVATE_PROFILE', 'PRIVATE_EMAIL', 'private-id', 'alice', 'bob', '9000']) assert.ok(!sent.includes(secret), secret);
     const payload = JSON.parse(JSON.parse(h.requests[0][1].body).contents[0].parts[1].text);
     assert.equal(payload.context.currentGoal, 'recomposition'); assert.equal(payload.context.goalAppliesHistorically, false);
-    assert.equal(payload.schemaVersion, 3); assert.ok(payload.glance.headline.title); assert.equal(payload.evidence.coverage.previousHasRecords, false);
+    assert.equal(payload.schemaVersion, 4); assert.deepEqual(payload.notes, [{ date: '2026-01-05', type: 'food', about: 'comida', text: 'PERSONAL_SECRET' }]); assert.equal(payload.trend.weeks.length, 4); assert.ok(payload.glance.headline.title); assert.equal(payload.evidence.coverage.previousHasRecords, false);
     assert.equal(h.requests[0][1].signal instanceof AbortSignal, true);
     assert.equal(result.headers.get('cache-control'), 'no-store');
     assert.equal((await (await h.weekly()).json()).current.food.nutrients.calories.value, 200);

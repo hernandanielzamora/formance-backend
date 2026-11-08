@@ -3,9 +3,9 @@ import { providerError } from './food-providers.js';
 import { geminiHttpFailure } from './gemini-errors.js';
 import { weeklyEvidence, weeklyComparison } from './weekly-insights.js';
 
-const schemaVersion = 3;
+const schemaVersion = 4;
 const keys = ['calories', 'protein', 'fat', 'carbohydrates'];
-export function weeklyPayload(report, context = {}) {
+export function weeklyPayload(report, context = {}, extras = null) {
   const evidence = weeklyEvidence(report);
   const goal = ['maintain', 'muscle', 'recomposition', 'fat_loss'].includes(context.goal) ? context.goal : null;
   function period(value) {
@@ -29,6 +29,7 @@ export function weeklyPayload(report, context = {}) {
     weight: (({ points, ...rest }) => rest)(report.glance.weight), routinePlanned: report.glance.routinePlanned } : null;
   const targets = context.targets && typeof context.targets === 'object' ? Object.fromEntries(keys.map(key => [key, Number.isFinite(context.targets[key]) ? context.targets[key] : null])) : null;
   return { schemaVersion, context: { currentGoal: goal, currentTargets: targets, goalAppliesHistorically: false }, glance,
+    ...(extras ? { trend: extras.trend, exerciseProgress: extras.exerciseProgress, notes: extras.notes } : {}),
     period: { from: report.period.from, through: report.period.through,
     previousFrom: report.period.previousFrom, previousThrough: report.period.previousThrough,
     elapsedDays: report.period.elapsedDays, isPartial: report.period.isPartial },
@@ -45,26 +46,31 @@ export function validateWeeklyAnalysis(value) {
   const object = value && typeof value === 'object' && !Array.isArray(value);
   const validText = (text, max = 400) => typeof text === 'string' && text.trim().length > 0 && text.length <= max;
   const validList = (key, min, max) => Array.isArray(value[key]) && value[key].length >= min && value[key].length <= max && value[key].every(text => validText(text, 240));
-  if (!object || Object.keys(value).length !== 5 || !validText(value.headline, 200) || !validText(value.focus, 240)
+  if (!object || Object.keys(value).length !== 6 || !validText(value.headline, 200) || !validText(value.focus, 240) || !validText(value.trend, 400)
     || !validList('wins', 1, 3) || !validList('improvements', 1, 3)
     || !value.detail || typeof value.detail !== 'object' || Array.isArray(value.detail)
     || Object.keys(value.detail).length !== 3 || !['training', 'nutrition', 'weight'].every(key => validText(value.detail[key], 500))) {
     throw providerError(502, 'INVALID_WEEKLY_ANALYSIS', 'No pudimos obtener un análisis con formato válido. Intentá más tarde.');
   }
   const spanish = text => text.trim().replace(/\bfat\b/gi, 'grasas').replace(/\bcarbohydrates\b/gi, 'carbohidratos').replace(/\bprotein\b/gi, 'proteínas');
-  return { headline: spanish(value.headline), wins: value.wins.map(spanish), improvements: value.improvements.map(spanish), focus: spanish(value.focus),
+  return { headline: spanish(value.headline), wins: value.wins.map(spanish), improvements: value.improvements.map(spanish), focus: spanish(value.focus), trend: spanish(value.trend),
     detail: Object.fromEntries(['training', 'nutrition', 'weight'].map(key => [key, spanish(value.detail[key])])) };
 }
-export const weeklyAnalysisPrompt = `Sos el coach de lectura de Formance. Hablale al usuario de vos, en español rioplatense, directo y concreto, como alguien que lo acompaña: qué está pasando, qué hizo bien y dónde puede mejorar. Nada de introducciones, rodeos ni avisos genéricos.
-Fuente de verdad: glance (lectura ya calculada contra su objetivo actual, su rutina y la semana anterior) y el resto del JSON. No hagas cuentas nuevas ni inventes datos; usá solo valores presentes, redondeados como aparecen. context.currentGoal: maintain=mantener peso, muscle=ganar masa muscular, recomposition=mejorar composición corporal, fat_loss=bajar grasa. Los objetivos (context.currentTargets) son los actuales.
+export const weeklyAnalysisPrompt = `Sos el coach de lectura de Formance. Hablale al usuario de vos, en español rioplatense, directo y concreto, como alguien que lo acompaña: qué está pasando, qué hizo bien, dónde puede mejorar y cómo viene en el último mes. Nada de introducciones, rodeos ni avisos genéricos.
+Fuente de verdad: glance (lectura de esta semana ya calculada contra su objetivo actual, su rutina y la semana anterior), trend (las últimas 4 semanas, de la más antigua a la actual), exerciseProgress (carga máxima por semana de sus ejercicios principales) y notes (notas que el usuario escribió en sesiones y comidas). No hagas cuentas nuevas ni inventes datos; usá solo valores presentes, redondeados como aparecen. context.currentGoal: maintain=mantener peso, muscle=ganar masa muscular, recomposition=mejorar composición corporal, fat_loss=bajar grasa. Los objetivos (context.currentTargets) son los actuales.
+Cómo usar el contexto:
+- Compará esta semana con el mes: si un patrón se repite (fines de semana con más calorías, semanas completas seguidas, cargas que suben semana a semana), decilo con la cantidad de semanas. Si esta semana es una excepción, también.
+- exerciseProgress: nombrá 1 o 2 ejercicios con su evolución (por ejemplo "sentadilla de 82,5 a 92,5 kg en 4 semanas"). No digas que ganó fuerza o músculo: hablá de la carga registrada.
+- notes: usalas para explicar el contexto con las palabras del usuario ("cortaste la sesión por el viaje", "el sábado fue el cumpleaños"). No las cites textuales completas, no juzgues lo que cuenta y no repitas datos sensibles de salud que no hagan falta.
 Contenido:
-- headline: una frase (máx. 140 caracteres) que resuma la semana con lo más importante, positivo o negativo.
-- wins: 1–3 logros concretos con números (días entrenados, cargas que subieron, días en objetivo, proteína, peso alineado al objetivo). Si no hay logros claros, destacá lo que sí registró.
-- improvements: 1–3 puntos de mejora concretos con números (entrenamientos salteados, sesiones interrumpidas, picos de calorías o fines de semana, proteína corta, pocos días registrados, peso en dirección opuesta al objetivo). Si la semana fue muy buena, proponé el siguiente desafío.
+- headline: una frase (máx. 140 caracteres) con lo más importante de la semana, positivo o negativo.
+- wins: 1–3 logros concretos con números (días entrenados, cargas, días en objetivo, proteína, peso alineado al objetivo, constancia del mes).
+- improvements: 1–3 mejoras concretas con números, priorizando lo que se repite en el mes. Si la semana fue muy buena, proponé el siguiente desafío.
 - focus: una sola acción práctica y realista para la próxima semana, vinculada a la mejora principal (máx. 160 caracteres).
-- detail.training, detail.nutrition, detail.weight: 1–2 frases cada uno (máx. 260 caracteres) que expliquen el porqué con datos, incluida la comparación con la semana anterior cuando exista.
-Límites: no diagnostiques ni prescribas dietas, medicamentos ni suplementos; no indiques cifras nuevas de calorías o cargas fuera de sus objetivos actuales. No atribuyas cambios de peso a grasa o músculo. Un día sin registros no prueba que no haya comido o entrenado: decilo como falta de registro. Si la semana está en curso (period.isPartial), hablá de "hasta hoy".
-Respondé SOLO JSON con exactamente: headline (string), wins (array 1–3 strings), improvements (array 1–3 strings), focus (string), detail (objeto con training, nutrition, weight). Total breve: 90–150 palabras. No menciones IA, modelos ni Gemini.`;
+- trend: 1–2 frases (máx. 300 caracteres) sobre cómo viene el último mes: constancia, carga de los ejercicios principales, calorías y peso.
+- detail.training, detail.nutrition, detail.weight: 1–2 frases cada uno (máx. 260 caracteres) con el porqué de esta semana, usando datos y notas.
+Límites: no diagnostiques ni prescribas dietas, medicamentos ni suplementos; no indiques cifras nuevas de calorías o cargas fuera de sus objetivos actuales. No atribuyas cambios de peso a grasa o músculo; para relacionar señales usá "coincide con", no causas. Un día sin registros no prueba que no haya comido o entrenado: decilo como falta de registro. Si la semana está en curso (period.isPartial), hablá de "hasta hoy".
+Respondé SOLO JSON con exactamente: headline (string), wins (array 1–3 strings), improvements (array 1–3 strings), focus (string), trend (string), detail (objeto con training, nutrition, weight). Total breve: 110–180 palabras. No menciones IA, modelos ni Gemini.`;
 
 export async function generateWeeklyAnalysis(config, payload, fetcher = fetch) {
   let response;
@@ -75,9 +81,9 @@ export async function generateWeeklyAnalysis(config, payload, fetcher = fetch) {
       body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: weeklyAnalysisPrompt }, { text: JSON.stringify(payload) }] }],
         generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 2000,
           responseSchema: { type: 'OBJECT', properties: { headline: { type: 'STRING' }, wins: { type: 'ARRAY', items: { type: 'STRING' } },
-            improvements: { type: 'ARRAY', items: { type: 'STRING' } }, focus: { type: 'STRING' },
+            improvements: { type: 'ARRAY', items: { type: 'STRING' } }, focus: { type: 'STRING' }, trend: { type: 'STRING' },
             detail: { type: 'OBJECT', properties: { training: { type: 'STRING' }, nutrition: { type: 'STRING' }, weight: { type: 'STRING' } }, required: ['training', 'nutrition', 'weight'] } },
-            required: ['headline', 'wins', 'improvements', 'focus', 'detail'] } } }),
+            required: ['headline', 'wins', 'improvements', 'focus', 'trend', 'detail'] } } }),
     });
   } catch (error) {
     const timeout = ['TimeoutError', 'AbortError'].includes(error?.name);
@@ -95,8 +101,8 @@ export async function generateWeeklyAnalysis(config, payload, fetcher = fetch) {
   }
 }
 
-export async function analyzeWeeklyReport({ db, uid, config, report, context, fetcher = fetch }) {
-  const payload = weeklyPayload(report, context);
+export async function analyzeWeeklyReport({ db, uid, config, report, context, extras = null, fetcher = fetch }) {
+  const payload = weeklyPayload(report, context, extras);
   if (!report.current.training.totalSessions && !report.current.food.meals && !report.current.weight.count) {
     throw providerError(400, 'INSUFFICIENT_WEEKLY_DATA', 'Esta semana no tiene registros suficientes para analizar. Registrá entrenamiento, alimentación o peso.');
   }

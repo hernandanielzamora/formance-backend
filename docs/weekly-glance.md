@@ -22,9 +22,19 @@ días en objetivo, proteína, fines de semana con más calorías (≥ 15 %), pic
 Las metas usadas son las actuales: se identifican como “tu objetivo actual”. Un día sin
 registro se informa como falta de registro, no como incumplimiento.
 
-## Análisis con IA (v3)
+## Análisis con IA (v4)
 
-`POST /api/reports/weekly-analysis` envía la lectura ya calculada y pide un texto breve
-de coach: `headline`, `wins` (1–3), `improvements` (1–3), `focus` y `detail` por área.
-El modelo no calcula ni inventa valores. Los análisis v2 guardados no se reutilizan
-porque la huella incluye la versión del esquema.
+`POST /api/reports/weekly-analysis` envía la lectura ya calculada y, además, el contexto de
+las **últimas 4 semanas** (`src/services/weekly-trend.js`):
+
+- `trend`: constancia, calorías frente al objetivo, proteína, fines de semana y peso por semana,
+  con un resumen (semanas completas, semanas con fin de semana más pesado, cambio de peso).
+- `exerciseProgress`: carga máxima por semana de hasta 5 ejercicios con carga (principales primero).
+- `notes`: notas escritas por el usuario en sesiones (4 semanas) y comidas (semana analizada),
+  recortadas a 240 caracteres, sin nombre, email ni identificadores. **Decisión de producto:**
+  antes no se enviaban; ahora se envían para explicar el contexto, y el frontend lo avisa.
+
+La respuesta pide `headline`, `wins` (1–3), `improvements` (1–3), `focus`, `trend` y `detail`
+por área. El modelo no calcula ni inventa valores y relaciona señales con “coincide con”.
+Solo este endpoint lee 5 semanas; el reporte normal sigue leyendo 2. Los análisis guardados
+con versiones anteriores no se reutilizan porque la huella incluye la versión del esquema.
