@@ -212,7 +212,7 @@ export function buildStoryMeals({ targets, from, to, zone, createdAt }) {
 
 // Peso: leve tendencia a la baja (recomposición), rebote tras el viaje y los asados.
 export function buildStoryWeights({ initialWeightKg, from, to, zone, createdAt }) {
-  const weights = []; const start = initialWeightKg + .8;
+  const weights = []; const start = initialWeightKg + .3;
   for (let day = from, offset = 0; day <= to; day = shiftDate(day, 1), offset++) {
     const week = storyWeeks[mondayOf(day)]; const index = weekday(day);
     const measured = week.kind === 'floja' ? [0, 6].includes(index) : [0, 2, 4, 6].includes(index) || (week.kind === 'actual' && index === 1);
