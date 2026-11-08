@@ -14,7 +14,8 @@
     "migrate:training": "node scripts/migrate-training.js",
     "seed:training": "node scripts/seed-training-catalog.js",
     "seed:study": "node scripts/seed-study-data.js",
-    "refine:study": "node scripts/refine-study-data.js"
+    "refine:study": "node scripts/refine-study-data.js",
+    "seed:story": "node scripts/seed-demo-story.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
